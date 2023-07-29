@@ -1,0 +1,1 @@
+docker run -d -p 5432:5432 --name db-test -e POSTGRES_PASSWORD=postgres -v 5wc2024api-test:/var/lib/postgresql postgres
