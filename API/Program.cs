@@ -19,7 +19,7 @@ builder.Services.AddSerilog(configuration =>
 	             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
 	             .Enrich.FromLogContext()
 	             .WriteTo.Console()
-	             .WriteTo.File("logs\\log.txt", rollingInterval: RollingInterval.Day)
+	             .WriteTo.File("logs\\log.log", rollingInterval: RollingInterval.Day)
 	             .WriteTo.PostgreSQL(connString, "Logs", needAutoCreateTable: true);
 });
 
