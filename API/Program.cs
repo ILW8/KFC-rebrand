@@ -12,8 +12,9 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddSerilog(configuration =>
 {
-	string connString = builder.Configuration.GetConnectionString("DefaultConnection") ?? 
+	string connString = builder.Configuration.GetConnectionString("DefaultConnection") ??
 	                    throw new InvalidOperationException("Missing connection string!");
+
 	configuration.MinimumLevel.Debug()
 	             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
 	             .Enrich.FromLogContext()
