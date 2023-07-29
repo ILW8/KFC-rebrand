@@ -1,3 +1,5 @@
+using API.Configurations;
+using API.Services;
 using Serilog;
 using Serilog.Events;
 
@@ -21,6 +23,19 @@ builder.Services.AddSerilog(configuration =>
 	             .WriteTo.Console()
 	             .WriteTo.File("logs\\log.log", rollingInterval: RollingInterval.Day)
 	             .WriteTo.PostgreSQL(connString, "Logs", needAutoCreateTable: true);
+});
+
+builder.Services.AddLogging();
+
+builder.Services.AddSingleton<DbCredentials>(serviceProvider =>
+{
+	string? connString = serviceProvider.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
+	if (connString == null)
+	{
+		throw new InvalidOperationException("Missing connection string!");
+	}
+	
+	return new DbCredentials(connString);
 });
 
 var app = builder.Build();
