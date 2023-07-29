@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Dapper" Version="2.0.143" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />
         <PackageReference Include="Serilog" Version="3.0.1" />
         <PackageReference Include="Serilog.AspNetCore" Version="7.0.0" />
@@ -26,7 +27,6 @@
 
     <ItemGroup>
       <Folder Include="Controllers\" />
-      <Folder Include="Entities\" />
       <Folder Include="Services\" />
     </ItemGroup>
 
