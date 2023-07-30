@@ -26,9 +26,22 @@ public class ServiceBase<T> : IService<T> where T : class, IEntity
 			return await connection.GetAsync<T>(id);
 		}
 	}
-	
-	public async Task<int?> UpdateAsync(T entity) => throw new NotImplementedException();
-	public async Task<int?> DeleteAsync(int id) => throw new NotImplementedException();
+
+	public async Task<int> UpdateAsync(T entity)
+	{
+		using (var connection = new NpgsqlConnection(_connectionString))
+		{
+			return await connection.UpdateAsync(entity);
+		}
+	}
+
+	public async Task<int> DeleteAsync(int id)
+	{
+		using(var connection = new NpgsqlConnection(_connectionString))
+		{
+			return await connection.DeleteAsync<T>(id);
+		}
+	}
 
 	public async Task<IEnumerable<T>?> GetAllAsync()
 	{
@@ -42,5 +55,12 @@ public class ServiceBase<T> : IService<T> where T : class, IEntity
 			return null;
 		}
 	}
-	public async Task<bool> ExistsAsync(int id) => throw new NotImplementedException();
+
+	public async Task<bool> ExistsAsync(int id)
+	{
+		using(var connection = new NpgsqlConnection(_connectionString))
+		{
+			return await connection.RecordCountAsync<T>(whereConditions: new { Id = id }) > 0;
+		}
+	}
 }
