@@ -1,3 +1,7 @@
+using API.Configurations;
+using API.Services.Implementations;
+using API.Services.Interfaces;
+using Dapper;
 using Serilog;
 using Serilog.Events;
 
@@ -22,6 +26,23 @@ builder.Services.AddSerilog(configuration =>
 	             .WriteTo.File("logs\\log.log", rollingInterval: RollingInterval.Day)
 	             .WriteTo.PostgreSQL(connString, "Logs", needAutoCreateTable: true);
 });
+
+builder.Services.AddLogging();
+
+builder.Services.AddSingleton<IDbCredentials, DbCredentials>(serviceProvider =>
+{
+	string? connString = serviceProvider.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
+	if (connString == null)
+	{
+		throw new InvalidOperationException("Missing connection string!");
+	}
+	
+	return new DbCredentials(connString);
+});
+
+builder.Services.AddScoped<IRegistrantService, RegistrantService>();
+
+SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
 
 var app = builder.Build();
 
