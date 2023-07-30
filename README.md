@@ -6,7 +6,8 @@
 - Clone the repo and `cd` into it
 - Run `sh database-setup/db-test.sh` (or copy and paste the docker command yourself). This starts a PostgreSQL database on your system (make sure nothing is already occupying port 5432)
 - Using a database browser, connect to the database (view credentials below), and run the `database-setup/schema.sql` script.
-- Create this file under `./API`, don't change the contents:
+- Create this file under `./API/appsettings.Development.json`, don't change the contents:
+
 ```json
 {
   "ConnectionStrings": {
