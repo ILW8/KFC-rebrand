@@ -32,7 +32,7 @@ public class CrudController<T> : Controller where T : class, IEntity
 		if(entities == null)
 		{
 			_logger.LogWarning("No entities of type {Type} found", typeof(T).Name);
-			return NotFound();
+			return NotFound("No entities exist");
 		}
 		
 		_logger.LogInformation("Successfully fetched all entities of type {Type}", typeof(T).Name);

@@ -1,6 +1,8 @@
-﻿namespace API.Services.Interfaces;
+﻿using API.Entities;
 
-public interface IRegistrantService
+namespace API.Services.Interfaces;
+
+public interface IRegistrantService : IService<Registrant>
 {
 	
 }
