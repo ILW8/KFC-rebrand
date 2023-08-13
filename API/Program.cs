@@ -1,6 +1,5 @@
 using API.Configurations;
 using API.Services.Implementations;
-using API.Services.Interfaces;
 using Dapper;
 using Serilog;
 using Serilog.Events;
@@ -27,8 +26,11 @@ builder.Services.AddSerilog(configuration =>
 	             .WriteTo.PostgreSQL(connString, "Logs", needAutoCreateTable: true);
 });
 
+SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
+
 builder.Services.AddLogging();
 
+builder.Services.AddScoped<RegistrantService>();
 builder.Services.AddSingleton<IDbCredentials, DbCredentials>(serviceProvider =>
 {
 	string? connString = serviceProvider.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
@@ -39,10 +41,6 @@ builder.Services.AddSingleton<IDbCredentials, DbCredentials>(serviceProvider =>
 	
 	return new DbCredentials(connString);
 });
-
-builder.Services.AddScoped<IRegistrantService, RegistrantService>();
-
-SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
 
 var app = builder.Build();
 
