@@ -71,10 +71,10 @@ public class CrudController<T> : Controller where T : class, IEntity
 	}
 	
 	[HttpPut]
-	public virtual async Task<ActionResult<int>> Update(T entity)
+	public virtual async Task<ActionResult<int?>> Update(T entity)
 	{
 		_logger.LogInformation("Updating entity of type {Type}", typeof(T).Name);
-		int rowsAffected = await _service.UpdateAsync(entity);
+		int? rowsAffected = await _service.UpdateAsync(entity);
 		if(rowsAffected == 0)
 		{
 			_logger.LogError("Failed to update entity of type {Type}", typeof(T).Name);
@@ -86,10 +86,10 @@ public class CrudController<T> : Controller where T : class, IEntity
 	}
 	
 	[HttpDelete("{id}")]
-	public virtual async Task<ActionResult<int>> Delete(int id)
+	public virtual async Task<ActionResult<int?>> Delete(int id)
 	{
 		_logger.LogInformation("Deleting entity of type {Type} with id {Id}", typeof(T).Name, id);
-		int rowsAffected = await _service.DeleteAsync(id);
+		int? rowsAffected = await _service.DeleteAsync(id);
 		if(rowsAffected == 0)
 		{
 			_logger.LogError("Failed to delete entity of type {Type} with id {Id}", typeof(T).Name, id);

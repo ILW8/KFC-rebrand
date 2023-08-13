@@ -1,5 +1,6 @@
 ﻿using API.Configurations;
 using API.Entities;
+using API.Services.Interfaces;
 
 namespace API.Services.Implementations;
 

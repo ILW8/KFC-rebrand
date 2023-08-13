@@ -19,12 +19,12 @@ public interface IService<T> where T : class, IEntity
 	/// <summary>
 	///  Updates an entity in the database by its ID. Returns the number of rows affected.
 	/// </summary>
-	Task<int> UpdateAsync(T entity);
+	Task<int?> UpdateAsync(T entity);
 
 	/// <summary>
 	///  Deletes an entity from the database by its ID. Returns the number of rows affected.
 	/// </summary>
-	Task<int> DeleteAsync(int id);
+	Task<int?> DeleteAsync(int id);
 
 	// Other common operations
 	
