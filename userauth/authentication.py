@@ -17,18 +17,6 @@ class DiscordAndOsuAuthBackend(BaseBackend):
             # check both user and TournamentPlayer exist
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            # check if TournamentPlayer already exists with either discord or osu id
-            try:
-                # found existing TournamentPlayer with different osu id
-                tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(discord_user_id=discord_user_id)[0]
-                tournament_player.osu_user_id = osu_user_id
-                tournament_player.user.username = username
-                tournament_player.user.save()
-                tournament_player.save()
-                return tournament_player.user
-            except IndexError:
-                pass
-
             try:
                 # found existing TournamentPlayer with different discord id
                 tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(osu_user_id=osu_user_id)[0]

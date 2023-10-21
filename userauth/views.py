@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from rest_framework.decorators import action
 from django.contrib.auth import authenticate, login, logout
+import django.dispatch
 
 from .models import TournamentPlayer
 
@@ -17,6 +18,8 @@ from .models import TournamentPlayer
 DISCORD_REDIRECT_BASE = "http://127.0.0.1:8000/auth/discord/"
 DISCORD_REDIRECT_URI = f"{DISCORD_REDIRECT_BASE}discord_code"
 OSU_REDIRECT_URI = "http://127.0.0.1:8000/auth/osu/code"
+
+login_signal = django.dispatch.Signal()
 
 
 class SessionDetails(viewsets.ViewSet):
@@ -42,6 +45,10 @@ class SessionDetails(viewsets.ViewSet):
                                   osu_user_data=request.session.get("osu_user_data"))
         if user is not None:
             login(request, user)
+            login_signal.send("login",
+                              payload={"user_id": user.tournamentplayer.discord_user_id,
+                                       "is_organizer": user.tournamentplayer.is_organizer,
+                                       "action": "register"})
             return Response({"ok": "logged in", "user": user.username})
         return Response({"error": "failed to authenticate"}, status=status.HTTP_401_UNAUTHORIZED)
 

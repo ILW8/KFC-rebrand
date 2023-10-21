@@ -33,15 +33,20 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'discord',
+    'userauth',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'userauth',
     'rest_framework'
 ]
+
+ASGI_APPLICATION = 'fivedigitworldcup.asgi.application'
 
 AUTHENTICATION_BACKENDS = [
     'userauth.authentication.DiscordAndOsuAuthBackend',

@@ -12,6 +12,9 @@ class TournamentPlayer(models.Model):
     discord_avatar = models.CharField(max_length=64)
 
     osu_user_id = models.BigIntegerField(blank=True)
+    osu_flag = models.CharField(max_length=4)
+
+    is_organizer = models.BooleanField(default=False)
 
     class Meta:
         indexes = [
