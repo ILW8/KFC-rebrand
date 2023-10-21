@@ -140,3 +140,8 @@ REST_FRAMEWORK = {
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", None)
+
+OSU_API_ENDPOINT = "https://osu.ppy.sh/api/v2"
+OSU_OAUTH_ENDPOINT = "https://osu.ppy.sh/oauth"
+OSU_CLIENT_ID = os.environ.get("OSU_CLIENT_ID", None)
+OSU_CLIENT_SECRET = os.environ.get("OSU_CLIENT_SECRET", None)

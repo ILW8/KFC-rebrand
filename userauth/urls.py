@@ -5,7 +5,8 @@ from . import views
 
 router = routers.DefaultRouter()
 # router.register('discord_login', views.first_thing)
-router.register('discord', views.DiscordAuth, basename='discord_code')
+router.register('discord', views.DiscordAuth, basename='discord')
+router.register('osu', views.OsuAuth, basename='osu')
 # router.register('users', views.UserViewSet)
 
 
