@@ -2,14 +2,14 @@ from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
 from rest_framework import viewsets, serializers, status
 import requests
-import os
 import urllib.parse
 from django.conf import settings
 
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from rest_framework.decorators import action
+from django.contrib.auth import authenticate, login, logout
+
 from .models import TournamentPlayer
 
 # todo: move to settings
@@ -19,6 +19,33 @@ DISCORD_REDIRECT_URI = f"{DISCORD_REDIRECT_BASE}discord_code"
 OSU_REDIRECT_URI = "http://127.0.0.1:8000/auth/osu/code"
 
 
+class SessionDetails(viewsets.ViewSet):
+    def list(self, request):
+        return Response({
+            "logged_in_user": request.user.username,
+            "discord": request.session.get("discord_user_data"),
+            "osu": request.session.get("osu_user_data")})
+
+    @action(methods=['get', 'post'], detail=False)
+    def logout(self, request):
+        if request.session.get("discord_user_data") is not None:
+            del request.session["discord_user_data"]
+        if request.session.get("osu_user_data") is not None:
+            del request.session["osu_user_data"]
+        logout(request)
+        return Response({"ok": "logged out"}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(methods=['get', 'post'], detail=False)
+    def login(self, request):
+        user: User = authenticate(request,
+                                  discord_user_data=request.session.get("discord_user_data"),
+                                  osu_user_data=request.session.get("osu_user_data"))
+        if user is not None:
+            login(request, user)
+            return Response({"ok": "logged in", "user": user.username})
+        return Response({"error": "failed to authenticate"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 class OsuAuth(viewsets.ViewSet):
     @action(methods=['get'], detail=False)
     def prompt_login(self, request):
@@ -26,7 +53,8 @@ class OsuAuth(viewsets.ViewSet):
                f"?response_type=code"
                f"&client_id={settings.OSU_CLIENT_ID}"
                f"&scope=identify"
-               f"&redirect_uri={urllib.parse.quote(OSU_REDIRECT_URI)}")
+               f"&redirect_uri={urllib.parse.quote(OSU_REDIRECT_URI)}"
+               f"&prompt=consent")
         return HttpResponseRedirect(redirect_to=uri)
 
     @action(methods=['get'], detail=False)
@@ -55,10 +83,9 @@ class OsuAuth(viewsets.ViewSet):
         return Response(user_data, status=r.status_code)
 
     def list(self, request):
-        return Response({})
-
-    def get_permissions(self):
-        return [AllowAny()]
+        return Response({
+            # "a": reverse("some-view-name")
+        })
 
 
 class DiscordAuth(viewsets.ViewSet):
@@ -68,7 +95,8 @@ class DiscordAuth(viewsets.ViewSet):
                f"?response_type=code"
                f"&client_id={settings.DISCORD_CLIENT_ID}"
                f"&scope=identify"
-               f"&redirect_uri={urllib.parse.quote(DISCORD_REDIRECT_URI)}")
+               f"&redirect_uri={urllib.parse.quote(DISCORD_REDIRECT_URI)}"
+               f"&prompt=consent")
         return HttpResponseRedirect(redirect_to=uri)
 
     @action(methods=['get'], detail=False)
@@ -116,13 +144,3 @@ class DiscordAuth(viewsets.ViewSet):
 
     def list(self, request):
         return Response({})
-
-    def get_permissions(self):
-        # """
-        # Instantiates and returns the list of permissions that this view requires.
-        # """
-        # if self.action == 'list':
-        #     permission_classes = [IsAuthenticated]
-        # else:
-        #     permission_classes = [IsAdminUser]
-        return [AllowAny()]
