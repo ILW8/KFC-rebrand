@@ -14,31 +14,31 @@ class DiscordAndOsuAuthBackend(BaseBackend):
 
         username = f"{discord_user_id}:{osu_user_id}"
         try:
-            # check both user and tournamentplayer exist
+            # check both user and TournamentPlayer exist
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            # check if tourneyplayer already exists with either discord or osu id
-            tpqs = TournamentPlayer.objects.filter(discord_user_id=discord_user_id)
-            if tpqs.count() > 0:
-                # found existing tournamentplayer with different osu id
-                tournament_player: TournamentPlayer = tpqs[0]
+            # check if TournamentPlayer already exists with either discord or osu id
+            try:
+                # found existing TournamentPlayer with different osu id
+                tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(discord_user_id=discord_user_id)[0]
                 tournament_player.osu_user_id = osu_user_id
-                user = tournament_player.user
-                user.username = username
-                user.save()
+                tournament_player.user.username = username
+                tournament_player.user.save()
                 tournament_player.save()
-                return user
+                return tournament_player.user
+            except IndexError:
+                pass
 
-            tpqs = TournamentPlayer.objects.filter(osu_user_id=osu_user_id)
-            if tpqs.count() > 0:
-                # found existing tournamentplayer with different discord id
-                tournament_player: TournamentPlayer = tpqs[0]
+            try:
+                # found existing TournamentPlayer with different discord id
+                tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(osu_user_id=osu_user_id)[0]
                 tournament_player.discord_user_id = discord_user_id
-                user = tournament_player.user
-                user.username = username
-                user.save()
+                tournament_player.user.username = username
+                tournament_player.user.save()
                 tournament_player.save()
-                return user
+                return tournament_player.user
+            except IndexError:
+                pass
 
             # Create a new user. There's no need to set a password
             # because only the password from settings.py is checked.
