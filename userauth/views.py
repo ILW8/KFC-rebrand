@@ -45,6 +45,16 @@ class SessionDetails(viewsets.ViewSet):
             return Response({"ok": "logged in", "user": user.username})
         return Response({"error": "failed to authenticate"}, status=status.HTTP_401_UNAUTHORIZED)
 
+    @action(methods=['delete'], detail=False)
+    def delete_account(self, request):
+        if not request.user.is_authenticated:
+            return Response({"error": "not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
+        user = request.user
+        logout(request)
+        user.delete()
+        return Response({"ok": "account deleted"}, status=status.HTTP_204_NO_CONTENT)
+
+
 
 class OsuAuth(viewsets.ViewSet):
     @action(methods=['get'], detail=False)
