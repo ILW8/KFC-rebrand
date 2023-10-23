@@ -144,11 +144,18 @@ REST_FRAMEWORK = {
     ]
 }
 
+# TODO: USE .ENV FOR CONFIGURATION
+
+# todo: use env var? use something more dynamic?
+OAUTH_REDIRECT_PREFIX = "http://127.0.0.1:8000"
+
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", None)
+DISCORD_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/discord/discord_code"
 
 OSU_API_ENDPOINT = "https://osu.ppy.sh/api/v2"
 OSU_OAUTH_ENDPOINT = "https://osu.ppy.sh/oauth"
 OSU_CLIENT_ID = os.environ.get("OSU_CLIENT_ID", None)
 OSU_CLIENT_SECRET = os.environ.get("OSU_CLIENT_SECRET", None)
+OSU_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/osu/code"

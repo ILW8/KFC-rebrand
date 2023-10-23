@@ -1,29 +1,21 @@
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
-from rest_framework import viewsets, serializers, status
+from rest_framework import viewsets, status
 import requests
 import urllib.parse
 from django.conf import settings
-
 from rest_framework.response import Response
-
 from rest_framework.decorators import action
 from django.contrib.auth import authenticate, login, logout
 import django.dispatch
 
-from .models import TournamentPlayer
-
-# todo: move to settings
-# DISCORD_REDIRECT_BASE = "http%3A%2F%2F127.0.0.1%3A8000%2Fauth%2Fdiscord%2F"
-DISCORD_REDIRECT_BASE = "http://127.0.0.1:8000/auth/discord/"
-DISCORD_REDIRECT_URI = f"{DISCORD_REDIRECT_BASE}discord_code"
-OSU_REDIRECT_URI = "http://127.0.0.1:8000/auth/osu/code"
 
 login_signal = django.dispatch.Signal()
 
 
 class SessionDetails(viewsets.ViewSet):
-    def list(self, request):
+    @staticmethod
+    def list(request):
         return Response({
             "logged_in_user": request.user.username,
             "discord": request.session.get("discord_user_data"),
@@ -45,6 +37,7 @@ class SessionDetails(viewsets.ViewSet):
                                   osu_user_data=request.session.get("osu_user_data"))
         if user is not None:
             login(request, user)
+            # noinspection PyUnresolvedReferences
             login_signal.send("login",
                               payload={"user_id": user.tournamentplayer.discord_user_id,
                                        "is_organizer": user.tournamentplayer.is_organizer,
@@ -54,13 +47,13 @@ class SessionDetails(viewsets.ViewSet):
 
     @action(methods=['delete'], detail=False)
     def delete_account(self, request):
+        # todo: using authentication classes would make this a lot easier no?
         if not request.user.is_authenticated:
             return Response({"error": "not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
         user = request.user
         logout(request)
         user.delete()
         return Response({"ok": "account deleted"}, status=status.HTTP_204_NO_CONTENT)
-
 
 
 class OsuAuth(viewsets.ViewSet):
@@ -70,7 +63,7 @@ class OsuAuth(viewsets.ViewSet):
                f"?response_type=code"
                f"&client_id={settings.OSU_CLIENT_ID}"
                f"&scope=identify"
-               f"&redirect_uri={urllib.parse.quote(OSU_REDIRECT_URI)}"
+               f"&redirect_uri={urllib.parse.quote(settings.OSU_REDIRECT_URI)}"
                f"&prompt=consent")
         return HttpResponseRedirect(redirect_to=uri)
 
@@ -83,7 +76,7 @@ class OsuAuth(viewsets.ViewSet):
         r = requests.post(f'{settings.OSU_OAUTH_ENDPOINT}/token',
                           data={'grant_type': 'authorization_code',
                                 'code': code,
-                                'redirect_uri': OSU_REDIRECT_URI},
+                                'redirect_uri': settings.OSU_REDIRECT_URI},
                           headers={'Content-Type': 'application/x-www-form-urlencoded'},
                           auth=(settings.OSU_CLIENT_ID, settings.OSU_CLIENT_SECRET))
         if r.status_code != 200:
@@ -99,10 +92,9 @@ class OsuAuth(viewsets.ViewSet):
         request.session["osu_user_data"] = user_data
         return Response(user_data, status=r.status_code)
 
-    def list(self, request):
-        return Response({
-            # "a": reverse("some-view-name")
-        })
+    @staticmethod
+    def list(request):
+        return Response({})
 
 
 class DiscordAuth(viewsets.ViewSet):
@@ -112,7 +104,7 @@ class DiscordAuth(viewsets.ViewSet):
                f"?response_type=code"
                f"&client_id={settings.DISCORD_CLIENT_ID}"
                f"&scope=identify"
-               f"&redirect_uri={urllib.parse.quote(DISCORD_REDIRECT_URI)}"
+               f"&redirect_uri={urllib.parse.quote(settings.DISCORD_REDIRECT_URI)}"
                f"&prompt=consent")
         return HttpResponseRedirect(redirect_to=uri)
 
@@ -122,24 +114,19 @@ class DiscordAuth(viewsets.ViewSet):
         if code is None:
             return Response({"error": "missing `code` query param"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # return Response({"code": code})
-
         # access token exchange
         data = {
             'grant_type': 'authorization_code',
             'code': code,
-            'redirect_uri': DISCORD_REDIRECT_URI
+            'redirect_uri': settings.DISCORD_REDIRECT_URI
         }
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         r = requests.post(f'{settings.DISCORD_API_ENDPOINT}/oauth2/token',
                           data=data,
                           headers=headers,
                           auth=(settings.DISCORD_CLIENT_ID, settings.DISCORD_CLIENT_SECRET))
         if r.status_code != 200:
             return Response(r.json(), status=r.status_code)
-
         auth_data = r.json()
 
         # fetch user information
@@ -159,5 +146,6 @@ class DiscordAuth(viewsets.ViewSet):
         print(request.query_params.get("access_token"))
         return Response(request.query_params)
 
-    def list(self, request):
+    @staticmethod
+    def list(request):
         return Response({})
