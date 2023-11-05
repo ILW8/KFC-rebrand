@@ -147,7 +147,7 @@ REST_FRAMEWORK = {
 # TODO: USE .ENV FOR CONFIGURATION
 
 # todo: use env var? use something more dynamic?
-OAUTH_REDIRECT_PREFIX = "http://127.0.0.1:8000"
+OAUTH_REDIRECT_PREFIX = os.environ.get("OAUTH_REDIRECT_PREFIX", "http://127.0.0.1:8000")
 
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
