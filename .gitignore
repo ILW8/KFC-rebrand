@@ -6,4 +6,6 @@ logs/
 **/bin/
 **/appsettings.json
 **/appsettings.Development.json
+**/__pycache__
 /db.sqlite3
+.DS_Store

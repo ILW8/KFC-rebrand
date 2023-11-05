@@ -13,4 +13,5 @@ router.register('session', views.SessionDetails, basename='session')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('login', views.login_frontend)
 ]

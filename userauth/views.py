@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
+from django.shortcuts import render, redirect
 from rest_framework import viewsets, status
 import requests
 import urllib.parse
@@ -9,8 +10,15 @@ from rest_framework.decorators import action
 from django.contrib.auth import authenticate, login, logout
 import django.dispatch
 
-
 login_signal = django.dispatch.Signal()
+
+
+def parse_return_page(request):
+    return_page: str | None = request.query_params.get("state", None)
+    return_page = urllib.parse.unquote(return_page)
+    if not return_page.startswith("/"):
+        return_page = None
+    return return_page
 
 
 class SessionDetails(viewsets.ViewSet):
@@ -59,17 +67,21 @@ class SessionDetails(viewsets.ViewSet):
 class OsuAuth(viewsets.ViewSet):
     @action(methods=['get'], detail=False)
     def prompt_login(self, request):
+        return_page = request.query_params.get("return_page", None)
         uri = (f"{settings.OSU_OAUTH_ENDPOINT}/authorize"
                f"?response_type=code"
                f"&client_id={settings.OSU_CLIENT_ID}"
                f"&scope=identify"
                f"&redirect_uri={urllib.parse.quote(settings.OSU_REDIRECT_URI)}"
                f"&prompt=consent")
+        if return_page is not None:
+            uri += f"&state={return_page}"
         return HttpResponseRedirect(redirect_to=uri)
 
     @action(methods=['get'], detail=False)
     def code(self, request):
         code = request.query_params.get("code", None)
+        return_page = parse_return_page(request)
         if code is None:
             return Response({"error": "missing `code` query param"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -90,6 +102,8 @@ class OsuAuth(viewsets.ViewSet):
             return Response(r.json(), status=r.status_code)
         user_data = r.json()
         request.session["osu_user_data"] = user_data
+        if return_page is not None:
+            return redirect(return_page)
         return Response(user_data, status=r.status_code)
 
     @staticmethod
@@ -100,17 +114,21 @@ class OsuAuth(viewsets.ViewSet):
 class DiscordAuth(viewsets.ViewSet):
     @action(methods=['get'], detail=False)
     def prompt_login(self, request):
+        return_page = request.query_params.get("return_page", None)
         uri = (f"https://discord.com/oauth2/authorize"
                f"?response_type=code"
                f"&client_id={settings.DISCORD_CLIENT_ID}"
                f"&scope=identify"
                f"&redirect_uri={urllib.parse.quote(settings.DISCORD_REDIRECT_URI)}"
                f"&prompt=consent")
+        if return_page is not None:
+            uri += f"&state={return_page}"
         return HttpResponseRedirect(redirect_to=uri)
 
     @action(methods=['get'], detail=False)
     def discord_code(self, request):
         code = request.query_params.get("code", None)
+        return_page = parse_return_page(request)
         if code is None:
             return Response({"error": "missing `code` query param"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -136,6 +154,8 @@ class DiscordAuth(viewsets.ViewSet):
             return Response(r.json(), status=r.status_code)
         user_data = r.json().get("user")
         request.session["discord_user_data"] = user_data
+        if return_page is not None:
+            return redirect(return_page)
         return Response(user_data, status=r.status_code)
 
         # check if user exists
@@ -149,3 +169,7 @@ class DiscordAuth(viewsets.ViewSet):
     @staticmethod
     def list(request):
         return Response({})
+
+
+def login_frontend(request):
+    return render(request, "login.html", {})
