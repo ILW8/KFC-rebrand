@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-u0r#lj965$_#(q18ld)bc8&3j^bs#bdfvje9k4!w#f)3bps*ip
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
 
 # AUTH_USER_MODEL = "userauth.TournamentPlayer"
 
