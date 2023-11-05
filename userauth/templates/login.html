@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>5WC Login</title>
+</head>
+<body>
+<script>
+    function logout() {
+        fetch("/auth/session/logout/").then(() => {
+            location.reload()
+        })
+    }
+
+    function login() {
+        fetch("/auth/session/login/").then(() => {
+            location.reload()
+        })
+    }
+
+    function discord_login() {
+        location.href = `/auth/discord/prompt_login/?return_page=${encodeURI(window.location.pathname)}`;
+    }
+
+    function osu_login() {
+        location.href = `/auth/osu/prompt_login/?return_page=${encodeURI(window.location.pathname)}`;
+    }
+
+</script>
+<p>please log in with discord and osu! first</p>
+<p>if you don't already have an account, one will be automatically created when you click login</p>
+
+<div><span>discord: </span><span id="discord">loading...</span>
+    <button onclick="discord_login()">login with discord</button>
+</div>
+<div><span>osu: </span> <span id="osu">loading...</span>
+    <button onclick="osu_login()">login with osu!</button>
+</div>
+<div><span>5wc user: </span> <span id="5wc">loading...</span></div>
+
+<button onclick="login()" id="login-button" disabled>log in</button>
+<button onclick="logout()" id="logout-button" disabled>log out</button>
+<script>
+    console.log("Hi");
+    const discord = document.getElementById("discord");
+    const osu = document.getElementById("osu");
+    const fivewc = document.getElementById("5wc");
+    fetch("/auth/session/").then(resp => resp.json()).then(data => {
+        console.log(data);
+
+        osu.textContent = "not logged in"
+        discord.textContent = "not logged in"
+        fivewc.textContent = "not logged in"
+        let logged_in = 0
+        if ('discord' in data) {
+            if (data.discord != null && 'id' in data.discord) {
+                discord.textContent = `${data.discord.username} (${data.discord.id})`
+                logged_in++;
+            }
+        }
+
+        if ('osu' in data) {
+            if (data.osu != null && 'id' in data.osu) {
+                osu.textContent = `${data.osu.username} (${data.osu.id})`
+                logged_in++;
+            }
+        }
+
+        if ('logged_in_user' in data && data.logged_in_user) {
+            fivewc.textContent = data.logged_in_user
+            document.getElementById("logout-button").disabled = false;
+            logged_in++;
+        }
+
+        if (logged_in === 2) {
+            document.getElementById("login-button").disabled = false;
+        }
+    })
+</script>
+</body>
+</html>
