@@ -14,7 +14,7 @@ login_signal = django.dispatch.Signal()
 
 
 def parse_return_page(request):
-    return_page: str | None = request.query_params.get("state", None)
+    return_page: str | None = request.query_params.get("state", "")  # default retval will cause "starts with /" to fail
     return_page = urllib.parse.unquote(return_page)
     if not return_page.startswith("/"):
         return_page = None
