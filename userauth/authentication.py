@@ -9,11 +9,14 @@ class DiscordAndOsuAuthBackend(BaseBackend):
         if discord_user_data is None or osu_user_data is None:
             return None
 
-        discord_data = {'id': None, 'username': None}
+        discord_data = {'id': None, 'username': None, 'discriminator': None}
         for key in discord_data:
             discord_data[key] = discord_user_data.get(key)
         if None in discord_data.values():  # ensure all fields filled
             return None
+        discord_data['composite_username'] = discord_data['username']
+        discord_data['composite_username'] += f"#{discord_data['discriminator']}" \
+            if discord_data['discriminator'] != '0' else ''
 
         osu_data = {'id': None, 'username': None, 'country_code': None}
         for key in osu_data:
@@ -36,7 +39,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                 # found existing TournamentPlayer with different discord id
                 tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(osu_user_id=osu_data['id'])[0]
                 tournament_player.discord_user_id = discord_data['id']
-                tournament_player.discord_username = discord_data['username']
+                tournament_player.discord_username = discord_data['composite_username']
                 tournament_player.user.username = username
                 tournament_player.user.save()
                 tournament_player.save()
@@ -56,7 +59,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
         except TournamentPlayer.DoesNotExist:
             tourney_player = TournamentPlayer(user=user,
                                               discord_user_id=discord_data['id'],
-                                              discord_username=discord_data['username'],
+                                              discord_username=discord_data['composite_username'],
                                               osu_user_id=osu_data['id'],
                                               osu_username=osu_data['username'],
                                               osu_flag=osu_data['country_code'])
