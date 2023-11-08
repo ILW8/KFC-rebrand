@@ -10,3 +10,5 @@ logs/
 /db.sqlite3
 .DS_Store
 /.env
+/userauth/management/commands/_guild_data.json
+/userauth/management/commands/_osu_data.json
