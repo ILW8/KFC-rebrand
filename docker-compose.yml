@@ -1,0 +1,10 @@
+version: '3.10'
+
+# helper compose .yml for development purposes
+services:
+  redis:
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379"
+    restart: on-failure

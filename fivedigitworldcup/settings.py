@@ -48,8 +48,6 @@ INSTALLED_APPS = [
     'rest_framework'
 ]
 
-ASGI_APPLICATION = 'fivedigitworldcup.asgi.application'
-
 AUTHENTICATION_BACKENDS = [
     'userauth.authentication.DiscordAndOsuAuthBackend',
     "django.contrib.auth.backends.ModelBackend"
@@ -85,7 +83,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'fivedigitworldcup.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
@@ -106,6 +103,17 @@ DATABASES = {
     }
 }
 
+ASGI_APPLICATION = 'fivedigitworldcup.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [
+                (os.environ.get("REDIS_HOST", "127.0.0.1"), int(os.environ.get("REDIS_PORT", "6379"))),
+            ],
+        },
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -125,7 +133,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -136,7 +143,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
@@ -166,6 +172,7 @@ DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", None)
 DISCORD_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/discord/discord_code"
 DISCORD_PSK = os.environ.get("DISCORD_PSK", "DONOTUSEINPRODUCTIONDONOTUSEINPRODUCTIONDONOTUSEINPRODUCTION")
+CHANNELS_DISCORD_WS_GROUP_NAME = "5wc_discord_signups"
 
 OSU_API_ENDPOINT = "https://osu.ppy.sh/api/v2"
 OSU_OAUTH_ENDPOINT = "https://osu.ppy.sh/oauth"

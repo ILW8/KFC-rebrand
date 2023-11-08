@@ -1,7 +1,12 @@
+import json
+
+from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
-
 from userauth.models import TournamentPlayer
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 class DiscordAndOsuAuthBackend(BaseBackend):
@@ -40,6 +45,16 @@ class DiscordAndOsuAuthBackend(BaseBackend):
         except TournamentPlayer.DoesNotExist:
             tourney_player = TournamentPlayer(user=user, discord_user_id=discord_user_id, osu_user_id=osu_user_id)
             tourney_player.save()
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(settings.CHANNELS_DISCORD_WS_GROUP_NAME,
+                                                    {
+                                                        "type": "registration.new",
+                                                        "message": json.dumps({
+                                                            "user_id": tourney_player.discord_user_id,
+                                                            "is_organizer": tourney_player.is_organizer,
+                                                            "action": "register"
+                                                        })
+                                                    })
         return user
 
     def get_user(self, user_id):
