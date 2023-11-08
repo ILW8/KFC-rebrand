@@ -5,15 +5,16 @@ from userauth.models import TournamentPlayer
 
 
 class DiscordAndOsuAuthBackend(BaseBackend):
-    def authenticate(self, request, discord_user_data=None, osu_user_data=None):
+    @staticmethod
+    def validate_data(discord_user_data, osu_user_data):
         if discord_user_data is None or osu_user_data is None:
-            return None
+            return None, None
 
         discord_data = {'id': None, 'username': None, 'discriminator': None}
         for key in discord_data:
             discord_data[key] = discord_user_data.get(key)
         if None in discord_data.values():  # ensure all fields filled
-            return None
+            discord_data = None
         discord_data['composite_username'] = discord_data['username']
         discord_data['composite_username'] += f"#{discord_data['discriminator']}" \
             if discord_data['discriminator'] != '0' else ''
@@ -22,13 +23,14 @@ class DiscordAndOsuAuthBackend(BaseBackend):
         for key in osu_data:
             osu_data[key] = osu_user_data.get(key)
         if None in osu_data.values():
-            return None
+            osu_data = None
+        return discord_data, osu_data
 
-        # # start deprecated
-        # if (discord_user_id := discord_user_data.get("id")) is None or \
-        #         (osu_user_id := osu_user_data.get("id")) is None:
-        #     return None
-        # # end deprecated
+    # todo: split user creation from authentication
+    def authenticate(self, request, discord_user_data=None, osu_user_data=None):
+        discord_data, osu_data = self.validate_data(discord_user_data, osu_user_data)
+        if discord_data is None or osu_data is None:
+            return None
 
         username = f"{discord_data['id']}:{osu_data['id']}"
         try:
