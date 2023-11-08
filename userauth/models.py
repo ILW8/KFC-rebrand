@@ -18,5 +18,6 @@ class TournamentPlayer(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['discord_user_id', 'osu_user_id'])
+            models.Index(fields=['discord_user_id', 'osu_user_id']),
+            models.Index(fields=['osu_user_id'])
         ]
