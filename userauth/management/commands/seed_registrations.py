@@ -23,27 +23,8 @@ class Command(BaseCommand):
         )
         start_time = time.perf_counter()
 
-        file_dir = pathlib.Path(__file__).parent.resolve()
-        filename = "_guild_data.json"
-
-        try:
-            with open(file_dir.joinpath(filename), "r") as infile:
-                discord_data = json.load(infile)
-                if options['shuffle']:
-                    random.shuffle(discord_data)
-        except FileNotFoundError:
-            raise CommandError(f"Seeding data file '{filename}' not found, "
-                               f"please place it in {file_dir}")
-
-        filename = "_osu_data.json"
-        try:
-            with open(file_dir.joinpath(filename), "r") as infile:
-                osu_data = json.load(infile)
-                if options['shuffle']:
-                    random.shuffle(osu_data)
-        except FileNotFoundError:
-            raise CommandError(f"Seeding data file '{filename}' not found, "
-                               f"please place it in {file_dir}")
+        discord_data = self.load_data_file("_guild_data.json", options)
+        osu_data = self.load_data_file("_osu_data.json", options)
 
         for i in range(options['count']):
             # todo: manually create users instead of relying on `authenticate`?
@@ -63,3 +44,19 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {options['count']} registrations in {time.perf_counter() - start_time:.3f}s")
         )
+
+    @staticmethod
+    def load_data_file(filename, options):
+        file_dir = pathlib.Path(__file__).parent.resolve()
+        try:
+            with open(file_dir.joinpath(filename), "r") as infile:
+                data = json.load(infile)
+                if options['shuffle']:
+                    random.shuffle(data)
+        except FileNotFoundError:
+            raise CommandError(f"Seeding data file '{filename}' not found, "
+                               f"please place it in {file_dir}")
+        if options['count'] > len(data):
+            raise CommandError(f"Seeding data file '{filename}' contains fewer entries "
+                               f"than the requested count of {options['count']}")
+        return data
