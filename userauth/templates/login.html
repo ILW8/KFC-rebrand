@@ -8,15 +8,50 @@
 </head>
 <body>
 <script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrfToken = getCookie('csrftoken');
+
     function logout() {
         fetch("/auth/session/logout/").then(() => {
             location.reload()
         })
     }
 
-    function login() {
-        fetch("/auth/session/login/").then(() => {
+    function delete_account() {
+        fetch("/auth/session/delete_account/", {
+            method: "delete",
+            // unsafe method, csrf token required. may consider exempting csrf on backend...
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(() => {
             location.reload()
+        })
+    }
+
+    function login() {
+        fetch("/auth/session/login/").then(response => {
+            if (response.status === 200) {
+                location.reload();
+            }
+
+            // if login failed, write message on why it failed
+            response.text().then(text => {
+                document.getElementById("login-btn-text").textContent = `${response.status}: ${response.statusText} | ${text}`;
+            })
         })
     }
 
@@ -40,8 +75,12 @@
 </div>
 <div><span>5wc user: </span> <span id="5wc">loading...</span></div>
 
-<button onclick="login()" id="login-button" disabled>log in</button>
+<div>
+    <button onclick="login()" id="login-button">log in</button>
+    <span id="login-btn-text"></span>
+</div>
 <button onclick="logout()" id="logout-button" disabled>log out</button>
+<button onclick="delete_account()" id="delete-account-btn" disabled>delete account</button>
 <script>
     console.log("Hi");
     const discord = document.getElementById("discord");
@@ -68,9 +107,11 @@
             }
         }
 
-        if ('logged_in_user' in data && data.logged_in_user) {
-            fivewc.textContent = data.logged_in_user
+        if ('logged_in_user' in data && data.logged_in_user && 'logged_in_user_id' in data) {
+            fivewc.textContent = `${data.logged_in_user_id} ("${data.logged_in_user}")`
             document.getElementById("logout-button").disabled = false;
+            document.getElementById("delete-account-btn").textContent = `delete 5wc account ${data.logged_in_user}`;
+            document.getElementById("delete-account-btn").disabled = false;
             logged_in++;
         }
 

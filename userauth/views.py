@@ -14,7 +14,7 @@ login_signal = django.dispatch.Signal()
 
 
 def parse_return_page(request):
-    return_page: str | None = request.query_params.get("state", None)
+    return_page: str | None = request.query_params.get("state", "")  # default retval will cause "starts with /" to fail
     return_page = urllib.parse.unquote(return_page)
     if not return_page.startswith("/"):
         return_page = None
@@ -26,6 +26,7 @@ class SessionDetails(viewsets.ViewSet):
     def list(request):
         return Response({
             "logged_in_user": request.user.username,
+            "logged_in_user_id": request.user.pk,
             "discord": request.session.get("discord_user_data"),
             "osu": request.session.get("osu_user_data")})
 
@@ -40,6 +41,9 @@ class SessionDetails(viewsets.ViewSet):
 
     @action(methods=['get', 'post'], detail=False)
     def login(self, request):
+        if request.session.get("discord_user_data") is None or request.session.get("osu_user_data") is None:
+            return Response({"error": "failed to authenticate", "msg": "required discord or osu! session missing"},
+                            status=status.HTTP_401_UNAUTHORIZED)
         user: User = authenticate(request,
                                   discord_user_data=request.session.get("discord_user_data"),
                                   osu_user_data=request.session.get("osu_user_data"))
@@ -64,6 +68,7 @@ class SessionDetails(viewsets.ViewSet):
         return Response({"ok": "account deleted"}, status=status.HTTP_204_NO_CONTENT)
 
 
+# todo: on osu login, invalidate previous logged-in user
 class OsuAuth(viewsets.ViewSet):
     @action(methods=['get'], detail=False)
     def prompt_login(self, request):
