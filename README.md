@@ -9,6 +9,7 @@
   - Windows: `venv\Scripts\activate.ps1`
   - *nix: `source venv/bin/activate`
 - Install dependencies `python3 -m pip install -r requirements.txt`
+- Run a redis server and specify host + port in `.env`
 - Acquire osu! and discord developer credentials (client ID and client secret)
   - [Discord developer portal](https://discord.com/developers/applications) -> Create new application -> OAuth2 -> Client ID & Client Secret
     - For development, add `http://127.0.0.1:8000/auth/discord/discord_code` to the list of allowed redirect URLs

@@ -49,11 +49,6 @@ class SessionDetails(viewsets.ViewSet):
                                   osu_user_data=request.session.get("osu_user_data"))
         if user is not None:
             login(request, user)
-            # noinspection PyUnresolvedReferences
-            login_signal.send("login",
-                              payload={"user_id": user.tournamentplayer.discord_user_id,
-                                       "is_organizer": user.tournamentplayer.is_organizer,
-                                       "action": "register"})
             return Response({"ok": "logged in", "user": user.username})
         return Response({"error": "failed to authenticate"}, status=status.HTTP_401_UNAUTHORIZED)
 

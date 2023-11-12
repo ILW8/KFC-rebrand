@@ -1,29 +1,19 @@
 import json
 
+from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
-from userauth.views import login_signal
+from django.conf import settings
 
 
-class ChatConsumer(WebsocketConsumer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # post_save.connect(self.db_post_save)
-        login_signal.connect(self.db_post_save)
-
+class DiscordRegistrationConsumer(WebsocketConsumer):
     def connect(self):
+        async_to_sync(self.channel_layer.group_add)(settings.CHANNELS_DISCORD_WS_GROUP_NAME, self.channel_name)
         self.accept()
 
     def disconnect(self, close_code):
-        pass
+        async_to_sync(self.channel_layer.group_discard)(settings.CHANNELS_DISCORD_WS_GROUP_NAME, self.channel_name)
 
-    def db_post_save(self, sender, **kwargs):
-        if (payload := kwargs.get("payload")) is None:
-            return
+    def registration_new(self, event):
+        payload = event["message"]
 
-        self.send(text_data=json.dumps({"message": json.dumps(payload)}))
-
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
-
-        self.send(text_data=json.dumps({"message": message}))
+        self.send(text_data=json.dumps({"message": payload}))
