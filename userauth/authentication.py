@@ -76,7 +76,10 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                                                     {
                                                         "type": "registration.new",
                                                         "message": json.dumps({
-                                                            "user_id": tourney_player.discord_user_id,
+                                                            "discord_user_id": tourney_player.discord_user_id,
+                                                            "osu_user_id": tourney_player.osu_user_id,
+                                                            "osu_username": tourney_player.osu_username,
+                                                            "flag": tourney_player.osu_flag,
                                                             "is_organizer": tourney_player.is_organizer,
                                                             "action": "register"
                                                         })
