@@ -39,27 +39,24 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
     queryset = TournamentPlayer.objects.all()
     permission_classes = [PreSharedKeyAuthentication, ]
 
-    def retrieve(self, request, *args, **kwargs):
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        # Lookup with pk
         try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
+            return super().get_object()
         except Http404 as pk404:
             lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
             if lookup_url_kwarg not in self.kwargs:
                 raise pk404
-
-        # fallback to search by discord id
-        queryset = self.filter_queryset(self.get_queryset())
+        # Fallback to discord id
         try:
-            instance = queryset.get(discord_user_id=self.kwargs[lookup_url_kwarg])
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
+            obj = queryset.get(discord_user_id=self.kwargs[lookup_url_kwarg])
         except queryset.model.DoesNotExist:
-            # noinspection PyProtectedMember
             raise Http404(
                 "No %s matches the given query." % queryset.model._meta.object_name
             )
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def update(self, request, **kwargs):
         return self.partial_update(request, **kwargs)
