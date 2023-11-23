@@ -31,7 +31,13 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = TournamentPlayer
-        fields = ['user_id', 'discord_user_id', 'discord_username', 'osu_user_id', 'osu_username', 'osu_flag', 'is_organizer']
+        fields = ['user_id',
+                  'discord_user_id',
+                  'discord_username',
+                  'osu_user_id',
+                  'osu_username',
+                  'osu_flag',
+                  'is_organizer']
 
 
 class TournamentPlayerViewSet(viewsets.ModelViewSet):

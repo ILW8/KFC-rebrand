@@ -16,8 +16,10 @@ login_signal = django.dispatch.Signal()
 def parse_return_page(request):
     return_page: str | None = request.query_params.get("state", "")  # default retval will cause "starts with /" to fail
     return_page = urllib.parse.unquote(return_page)
-    if not return_page.startswith("/"):
-        return_page = None
+
+    # TODO: add this back when frontend/backend are hosted together or add FRONTEND_BASEURL env var and check against it
+    # if not return_page.startswith("/"):
+    #     return_page = None
     return return_page
 
 
