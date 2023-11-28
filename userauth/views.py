@@ -20,6 +20,8 @@ def parse_return_page(request):
     # TODO: add this back when frontend/backend are hosted together or add FRONTEND_BASEURL env var and check against it
     # if not return_page.startswith("/"):
     #     return_page = None
+    if not return_page:
+        return_page = None
     return return_page
 
 
