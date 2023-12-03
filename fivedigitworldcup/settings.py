@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'daphne',
     'discord',
     'userauth',
+    'teammgmt',
     'channels',
     'django.contrib.admin',
     'django.contrib.auth',
