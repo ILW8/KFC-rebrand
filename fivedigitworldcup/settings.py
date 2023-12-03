@@ -13,6 +13,23 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
+
+# stolen from distutil, as distutil is deprecated in py3.10
+def strtobool(val):
+    """Convert a string representation of truth to true (1) or false (0).
+    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
+    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
+    'val' is anything else.
+    """
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError("invalid truth value %r" % (val,))
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +42,7 @@ load_dotenv(BASE_DIR.joinpath(".env"))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", 'django-insecure-u0r#lj965$_#(q18ld)bc8&3j^bs#bdfvje9k4!w#f)3bps*ip')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", False)
+DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 
 ALLOWED_HOSTS = ['vps.5wc.stagec.xyz', '.localhost', 'localhost', '127.0.0.1', '[::1]']
 
