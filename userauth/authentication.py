@@ -3,6 +3,8 @@ import json
 from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
+
+from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer
 
 from channels.layers import get_channel_layer
@@ -56,20 +58,20 @@ class DiscordAndOsuAuthBackend(BaseBackend):
 
             # Create a new user. There's no need to set a password
             # because only the password from settings.py is checked.
-            user = User(username=username)
-            user.is_staff = False
-            user.is_superuser = False
+            user = User(username=username, is_staff=False, is_superuser=False)
             user.save()
 
         try:
             TournamentPlayer.objects.get(discord_user_id=discord_data['id'], osu_user_id=osu_data['id'])
         except TournamentPlayer.DoesNotExist:
+            tournament_team, _ = TournamentTeam.objects.get_or_create(osu_flag=osu_data['country_code'])
             tourney_player = TournamentPlayer(user=user,
                                               discord_user_id=discord_data['id'],
                                               discord_username=discord_data['composite_username'],
                                               osu_user_id=osu_data['id'],
                                               osu_username=osu_data['username'],
-                                              osu_flag=osu_data['country_code'])
+                                              osu_flag=osu_data['country_code'],
+                                              team=tournament_team)
             tourney_player.save()
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(settings.CHANNELS_DISCORD_WS_GROUP_NAME,

@@ -5,7 +5,7 @@ from . import views
 
 router = routers.DefaultRouter()
 # router.register('discord_login', views.first_thing)
-router.register('', views.TournamentPlayerViewSet, basename='registrants')
+router.register('', views.TournamentPlayerViewSet, basename='tournamentplayer')
 
 urlpatterns = [
     path('', include(router.urls)),

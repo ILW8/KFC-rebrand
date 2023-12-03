@@ -8,6 +8,7 @@ router = routers.DefaultRouter()
 router.register('discord', views.DiscordAuth, basename='discord')
 router.register('osu', views.OsuAuth, basename='osu')
 router.register('session', views.SessionDetails, basename='session')
+router.register('users', views.UserViewSet)
 # router.register('users', views.UserViewSet)
 
 

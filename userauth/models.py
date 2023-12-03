@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+import teammgmt.models
+
 
 # Create your models here.
 class TournamentPlayer(models.Model):
@@ -16,9 +18,15 @@ class TournamentPlayer(models.Model):
     osu_flag = models.CharField(max_length=4)
 
     is_organizer = models.BooleanField(default=False)
+    team = models.ForeignKey(teammgmt.models.TournamentTeam,
+                             related_name='players',
+                             on_delete=models.PROTECT,
+                             default=teammgmt.models.TournamentTeam.get_default_pk)
+    in_roster = models.BooleanField(default=False)  # allow organizers to not be part of roster?
 
     class Meta:
         indexes = [
             models.Index(fields=['discord_user_id', 'osu_user_id']),
-            models.Index(fields=['osu_user_id'])
+            models.Index(fields=['osu_user_id']),
+            models.Index(fields=['team'])
         ]
