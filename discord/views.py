@@ -45,22 +45,51 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
     queryset = TournamentPlayer.objects.all()
     permission_classes = [PreSharedKeyAuthentication, ]
 
+    def retrieve(self, request, *args, **kwargs):
+        lookup_type = request.query_params.get("key", None)
+        valid_lookup_types = ("pk", "id", "discord", "osu")
+        if lookup_type is not None and lookup_type not in valid_lookup_types:
+            return Response({
+                "error": f"optional query parameter key not valid: '{lookup_type}'. "
+                         f"Must be one of {valid_lookup_types}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return super().retrieve(request, *args, **kwargs)
+
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
         # Lookup with pk
+        lookup_type = self.request.query_params.get("key", None)
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+
         try:
-            return super().get_object()
+            if lookup_type is None or lookup_type in ('id', 'pk'):
+                return super().get_object()
         except Http404 as pk404:
-            lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
-            if lookup_url_kwarg not in self.kwargs:
+            if lookup_url_kwarg not in self.kwargs:  # I'm no longer sure what purpose this really serves...
                 raise pk404
-        # Fallback to discord id
-        try:
-            obj = queryset.get(discord_user_id=self.kwargs[lookup_url_kwarg])
-        except queryset.model.DoesNotExist:
-            raise Http404(
-                "No %s matches the given query." % queryset.model._meta.object_name
-            )
+
+        error_404 = Http404("No %s matches the given query." % queryset.model._meta.object_name)
+
+        if lookup_type in ("pk", "id") or lookup_type is None:
+            raise error_404
+
+        obj = None
+        if lookup_type == "discord":
+            try:
+                obj = queryset.get(discord_user_id=self.kwargs[lookup_url_kwarg])
+            except queryset.model.DoesNotExist:
+                raise error_404
+
+        if lookup_type == "osu":
+            try:
+                if obj is None:
+                    obj = queryset.get(osu_user_id=self.kwargs[lookup_url_kwarg])
+            except queryset.model.DoesNotExist:
+                raise error_404
+
+        if obj is None:
+            raise error_404
+
         self.check_object_permissions(self.request, obj)
         return obj
 
