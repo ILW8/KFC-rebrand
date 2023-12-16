@@ -27,7 +27,13 @@ SECRET_KEY = 'django-insecure-u0r#lj965$_#(q18ld)bc8&3j^bs#bdfvje9k4!w#f)3bps*ip
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
+ALLOWED_HOSTS = ['api.vps.5wc.stagec.xyz', 'vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
+# CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOWED_ORIGINS = ['http://vps.5wc.stagec.xyz:8080', 'https://vps.5wc.stagec.xyz:8080']
+CORS_ALLOWED_ORIGINS = [f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
+CORS_ALLOW_CREDENTIALS = True
+
+SESSION_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
 # AUTH_USER_MODEL = "userauth.TournamentPlayer"
 
@@ -35,6 +41,7 @@ ALLOWED_HOSTS = ['vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'daphne',
     'discord',
     'userauth',
@@ -56,6 +63,7 @@ AUTHENTICATION_BACKENDS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
