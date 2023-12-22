@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.http import Http404
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import exceptions, permissions, status
@@ -46,14 +47,10 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
     permission_classes = [PreSharedKeyAuthentication, ]
 
     def retrieve(self, request, *args, **kwargs):
-        lookup_type = request.query_params.get("key", None)
-        valid_lookup_types = ("pk", "id", "discord", "osu")
-        if lookup_type is not None and lookup_type not in valid_lookup_types:
-            return Response({
-                "error": f"optional query parameter key not valid: '{lookup_type}'. "
-                         f"Must be one of {valid_lookup_types}"},
-                            status=status.HTTP_400_BAD_REQUEST)
-        return super().retrieve(request, *args, **kwargs)
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
@@ -73,22 +70,15 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
         if lookup_type in ("pk", "id") or lookup_type is None:
             raise error_404
 
-        obj = None
-        if lookup_type == "discord":
-            try:
-                obj = queryset.get(discord_user_id=self.kwargs[lookup_url_kwarg])
-            except queryset.model.DoesNotExist:
-                raise error_404
-
-        if lookup_type == "osu":
-            try:
-                if obj is None:
-                    obj = queryset.get(osu_user_id=self.kwargs[lookup_url_kwarg])
-            except queryset.model.DoesNotExist:
-                raise error_404
-
-        if obj is None:
-            raise error_404
+        match [lookup_type]:
+            case ["discord" | "osu"]:
+                try:
+                    obj = queryset.get(**{f"{lookup_type}_user_id": self.kwargs[lookup_url_kwarg]})
+                except queryset.model.DoesNotExist:
+                    raise error_404
+            case _:
+                raise ValueError(f"optional query parameter key not valid: '{lookup_type}'. "
+                                 f'Must be one of {("pk", "id", "discord", "osu")}')
 
         self.check_object_permissions(self.request, obj)
         return obj
