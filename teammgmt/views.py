@@ -1,3 +1,4 @@
+from django.contrib.auth.models import AnonymousUser
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -37,9 +38,13 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
     def members(self, request, **kwargs):
         team = self.get_object()
         if request.method == "PATCH" and 'players' in request.data:
-            if not request.user.tournamentplayer.is_organizer or request.user.tournamentplayer.team != team:
-                return Response({'error': f'user is not team organizer for team {team.osu_flag}'},
-                                status=status.HTTP_403_FORBIDDEN)
+            # request.user is an instance of AnonymousUser if the request was authenticated and authorized using PSK
+            # I don't like this nested `if`, but it's the simplest way of doing it
+            if not isinstance(request.user, AnonymousUser):
+                if (not request.user.tournamentplayer.is_organizer
+                        or request.user.tournamentplayer.team != team):
+                    return Response({'error': f'user is not team organizer for team {team.osu_flag}'},
+                                    status=status.HTTP_403_FORBIDDEN)
             players = request.data['players']
             try:
                 req_players_qs = TournamentPlayer.objects.filter(pk__in=players)
