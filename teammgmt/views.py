@@ -36,15 +36,21 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
 
     @action(methods=['get', 'PATCH'], detail=True)
     def members(self, request, **kwargs):
+        """
+        only allow organizer of team to see team registrants and roster
+        :param request:
+        :param kwargs:
+        :return:
+        """
         team = self.get_object()
+        # request.user is an instance of AnonymousUser if the request was authenticated and authorized using PSK
+        # I don't like this nested `if`, but it's the simplest way of doing it
+        if not isinstance(request.user, AnonymousUser):
+            if not request.user.tournamentplayer.is_organizer or request.user.tournamentplayer.team != team:
+                return Response({'error': f'user is not team organizer for team {team.osu_flag}'},
+                                status=status.HTTP_403_FORBIDDEN)
+
         if request.method == "PATCH" and 'players' in request.data:
-            # request.user is an instance of AnonymousUser if the request was authenticated and authorized using PSK
-            # I don't like this nested `if`, but it's the simplest way of doing it
-            if not isinstance(request.user, AnonymousUser):
-                if (not request.user.tournamentplayer.is_organizer
-                        or request.user.tournamentplayer.team != team):
-                    return Response({'error': f'user is not team organizer for team {team.osu_flag}'},
-                                    status=status.HTTP_403_FORBIDDEN)
             players = request.data['players']
             try:
                 req_players_qs = TournamentPlayer.objects.filter(pk__in=players)
