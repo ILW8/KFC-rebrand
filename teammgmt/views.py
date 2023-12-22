@@ -3,7 +3,7 @@ from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from discord.views import TournamentPlayerSerializer, PreSharedKeyAuthentication, TeamOrganizer
+from discord.views import TournamentPlayerSerializer, PreSharedKeyAuthentication, TeamOrganizer, ReadOnly
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer
 
@@ -32,9 +32,9 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
     serializer_class = TournamentTeamSerializer
     queryset = TournamentTeam.objects.all()
     http_method_names = ["get", "patch"]
-    permission_classes = [PreSharedKeyAuthentication | TeamOrganizer]
+    permission_classes = [ReadOnly]
 
-    @action(methods=['get', 'PATCH'], detail=True)
+    @action(methods=['get', 'PATCH'], detail=True, permission_classes=[PreSharedKeyAuthentication | TeamOrganizer])
     def members(self, request, **kwargs):
         """
         only allow organizer of team to see team registrants and roster
