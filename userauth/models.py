@@ -22,7 +22,10 @@ class TournamentPlayer(models.Model):
                              related_name='players',
                              on_delete=models.PROTECT,
                              default=teammgmt.models.TournamentTeam.get_default_pk)
-    in_roster = models.BooleanField(default=False)  # allow organizers to not be part of roster?
+    in_roster = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.osu_username} ({self.osu_flag}|{self.discord_global_name})"
 
     class Meta:
         indexes = [
