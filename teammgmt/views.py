@@ -3,7 +3,7 @@ from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from discord.views import TournamentPlayerSerializer, PreSharedKeyAuthentication
+from discord.views import TournamentPlayerSerializer, PreSharedKeyAuthentication, TeamOrganizer
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer
 
@@ -32,7 +32,7 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
     serializer_class = TournamentTeamSerializer
     queryset = TournamentTeam.objects.all()
     http_method_names = ["get", "patch"]
-    permission_classes = [PreSharedKeyAuthentication]
+    permission_classes = [PreSharedKeyAuthentication | TeamOrganizer]
 
     @action(methods=['get', 'PATCH'], detail=True)
     def members(self, request, **kwargs):
@@ -45,10 +45,7 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
         team = self.get_object()
         # request.user is an instance of AnonymousUser if the request was authenticated and authorized using PSK
         # I don't like this nested `if`, but it's the simplest way of doing it
-        if not isinstance(request.user, AnonymousUser):
-            if not request.user.tournamentplayer.is_organizer or request.user.tournamentplayer.team != team:
-                return Response({'error': f'user is not team organizer for team {team.osu_flag}'},
-                                status=status.HTTP_403_FORBIDDEN)
+
 
         if request.method == "PATCH" and 'players' in request.data:
             players = request.data['players']

@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AnonymousUser
 from django.db.models import Q
 from django.http import Http404
 from rest_framework.authentication import TokenAuthentication
@@ -28,6 +28,16 @@ class PreSharedKeyAuthentication(TokenAuthentication, BasePermission):
             raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
         return None, key
+
+
+class TeamOrganizer(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if isinstance(request.user, AnonymousUser):
+            return False
+        if not request.user.tournamentplayer.is_organizer or request.user.tournamentplayer.team != obj:
+            return False
+
+        return True
 
 
 # Create your views here.
