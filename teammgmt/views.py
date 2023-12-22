@@ -32,7 +32,7 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
     serializer_class = TournamentTeamSerializer
     queryset = TournamentTeam.objects.all()
     http_method_names = ["get", "patch"]
-    permission_classes = [PreSharedKeyAuthentication, ]
+    permission_classes = [PreSharedKeyAuthentication]
 
     @action(methods=['get', 'PATCH'], detail=True)
     def members(self, request, **kwargs):

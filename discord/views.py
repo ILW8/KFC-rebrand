@@ -13,10 +13,13 @@ from userauth.models import TournamentPlayer
 from rest_framework import serializers, viewsets
 
 
+class ReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS
+
+
 class PreSharedKeyAuthentication(TokenAuthentication, BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
         auth = self.authenticate(request)
         return auth is not None
 
@@ -50,7 +53,7 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
 class TournamentPlayerViewSet(viewsets.ModelViewSet):
     serializer_class = TournamentPlayerSerializer
     queryset = TournamentPlayer.objects.all()
-    permission_classes = [PreSharedKeyAuthentication, ]
+    permission_classes = [PreSharedKeyAuthentication | ReadOnly]
 
     def retrieve(self, request, *args, **kwargs):
         try:
