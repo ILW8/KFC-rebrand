@@ -22,5 +22,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('userauth.urls')),
     path('registrants/', include('discord.urls')),
+    path('teams/', include('teammgmt.urls')),
     path('api-auth/', include('rest_framework.urls'))
 ]

@@ -8,6 +8,7 @@ from rest_framework.permissions import BasePermission
 from django.conf import settings
 from rest_framework.response import Response
 
+from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer
 from rest_framework import serializers, viewsets
 
@@ -29,16 +30,21 @@ class PreSharedKeyAuthentication(TokenAuthentication, BasePermission):
 # Create your views here.
 class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    # user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all())
 
     class Meta:
         model = TournamentPlayer
-        fields = ['user_id',
+        fields = ['url',
+                  'user_id',
                   'discord_user_id',
                   'discord_username',
                   'osu_user_id',
                   'osu_username',
                   'osu_flag',
-                  'is_organizer']
+                  'is_organizer',
+                  'in_roster',
+                  'team_id',
+                  'team']
 
 
 class TournamentPlayerViewSet(viewsets.ModelViewSet):

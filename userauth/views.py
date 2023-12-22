@@ -3,7 +3,7 @@ import json
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 import requests
 import urllib.parse
 from django.conf import settings
@@ -199,3 +199,15 @@ class DiscordAuth(viewsets.ViewSet, OauthWithRedirect):
 
 def login_frontend(request):
     return render(request, "login.html", {})
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'id')
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
