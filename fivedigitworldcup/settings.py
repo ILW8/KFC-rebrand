@@ -167,7 +167,9 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny'
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'fivedigitworldcup.pagination.PageNumberWithLimitPagination',
+    'PAGE_SIZE': 50
 }
 
 # TODO: USE .ENV FOR CONFIGURATION
