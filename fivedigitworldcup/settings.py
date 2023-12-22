@@ -44,7 +44,13 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", 'django-insecure-u0r#lj965$_#(q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 
-ALLOWED_HOSTS = ['vps.5wc.stagec.xyz', '.localhost', 'localhost', '127.0.0.1', '[::1]']
+ALLOWED_HOSTS = ['api.vps.5wc.stagec.xyz', 'vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
+# CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOWED_ORIGINS = ['http://vps.5wc.stagec.xyz:8080', 'https://vps.5wc.stagec.xyz:8080']
+CORS_ALLOWED_ORIGINS = [f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
+CORS_ALLOW_CREDENTIALS = True
+
+SESSION_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
 # AUTH_USER_MODEL = "userauth.TournamentPlayer"
 
@@ -52,6 +58,7 @@ ALLOWED_HOSTS = ['vps.5wc.stagec.xyz', '.localhost', 'localhost', '127.0.0.1', '
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'daphne',
     'discord',
     'userauth',
@@ -74,6 +81,7 @@ AUTHENTICATION_BACKENDS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -177,7 +185,9 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny'
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'fivedigitworldcup.pagination.PageNumberWithLimitPagination',
+    'PAGE_SIZE': 50
 }
 
 # TODO: USE .ENV FOR CONFIGURATION
@@ -188,7 +198,8 @@ OAUTH_REDIRECT_PREFIX = os.environ.get("OAUTH_REDIRECT_PREFIX", "http://127.0.0.
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", None)
-DISCORD_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/discord/discord_code"
+DISCORD_REDIRECT_URI_SUFFIX = "/auth/discord/discord_code"
+DISCORD_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}{DISCORD_REDIRECT_URI_SUFFIX}"
 DISCORD_PSK = os.environ.get("DISCORD_PSK", "DONOTUSEINPRODUCTIONDONOTUSEINPRODUCTIONDONOTUSEINPRODUCTION")
 CHANNELS_DISCORD_WS_GROUP_NAME = "5wc_discord_signups"
 
@@ -196,4 +207,5 @@ OSU_API_ENDPOINT = "https://osu.ppy.sh/api/v2"
 OSU_OAUTH_ENDPOINT = "https://osu.ppy.sh/oauth"
 OSU_CLIENT_ID = os.environ.get("OSU_CLIENT_ID", None)
 OSU_CLIENT_SECRET = os.environ.get("OSU_CLIENT_SECRET", None)
-OSU_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/osu/code"
+OSU_REDIRECT_URI_SUFFIX = "/auth/osu/code"
+OSU_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}{OSU_REDIRECT_URI_SUFFIX}"
