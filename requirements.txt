@@ -1,8 +1,10 @@
+wheel~=0.42.0
+
 asgiref==3.7.2
 certifi==2023.7.22
 channels==4.0.0
 charset-normalizer==3.3.0
-Django==4.2.6
+Django~=4.2.6
 django-filter==23.3
 djangorestframework==3.14.0
 idna==3.4
