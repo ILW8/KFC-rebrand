@@ -49,6 +49,7 @@ ALLOWED_HOSTS = ['api.vps.5wc.stagec.xyz', 'vps.5wc.stagec.xyz', '.localhost', '
 # CORS_ALLOWED_ORIGINS = ['http://vps.5wc.stagec.xyz:8080', 'https://vps.5wc.stagec.xyz:8080']
 CORS_ALLOWED_ORIGINS = [f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [f"http://*.vps.5wc.stagec.xyz:{port}" for port in range(8000, 9000)]
 
 SESSION_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
