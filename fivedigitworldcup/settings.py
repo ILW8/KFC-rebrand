@@ -52,6 +52,7 @@ CORS_ALLOWED_ORIGINS = ([f'http://vps.5wc.stagec.xyz:{port}' for port in range(8
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = ([f"http://*.vps.5wc.stagec.xyz:{port}" for port in range(8000, 9000)]
                         + ["http://*.vps.5wc.stagec.xyz:2082"])
+CSRF_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
 SESSION_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
