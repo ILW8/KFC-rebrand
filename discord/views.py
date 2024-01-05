@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AnonymousUser
 from django.db.models import Q
 from django.http import Http404
 from rest_framework.authentication import TokenAuthentication
@@ -13,10 +13,13 @@ from userauth.models import TournamentPlayer
 from rest_framework import serializers, viewsets
 
 
+class ReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS
+
+
 class PreSharedKeyAuthentication(TokenAuthentication, BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
         auth = self.authenticate(request)
         return auth is not None
 
@@ -25,6 +28,16 @@ class PreSharedKeyAuthentication(TokenAuthentication, BasePermission):
             raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
         return None, key
+
+
+class TeamOrganizer(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if isinstance(request.user, AnonymousUser):
+            return False
+        if not request.user.tournamentplayer.is_organizer or request.user.tournamentplayer.team != obj:
+            return False
+
+        return True
 
 
 # Create your views here.
@@ -50,7 +63,7 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
 class TournamentPlayerViewSet(viewsets.ModelViewSet):
     serializer_class = TournamentPlayerSerializer
     queryset = TournamentPlayer.objects.all()
-    permission_classes = [PreSharedKeyAuthentication, ]
+    permission_classes = [PreSharedKeyAuthentication | ReadOnly]
 
     def retrieve(self, request, *args, **kwargs):
         try:
