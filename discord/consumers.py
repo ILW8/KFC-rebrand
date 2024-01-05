@@ -23,3 +23,6 @@ class DiscordRegistrationConsumer(WebsocketConsumer):
 
     def registration_delete(self, event):
         self._forward_event_message(event)
+
+    def registration_discord_switch(self, event):
+        self._forward_event_message(event)
