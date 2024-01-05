@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.db import transaction, IntegrityError
 from rest_framework import serializers, viewsets, status
@@ -51,13 +52,25 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
         """
         team = self.get_object()
         if request.method == "PATCH":
-            # todo: enforce
             if not ((required_fields := {'players', 'backups'}) <= (keys_provided := request.data.keys())):
                 return Response({"error": f"required field(s) "
                                           f"missing: {(keys_provided & required_fields) ^ required_fields}"},
                                 status=status.HTTP_400_BAD_REQUEST)
             players = request.data['players']
             backups = request.data['backups']
+
+            # todo: enforce registration time window cutoff
+
+            # check roster size
+            if not all([len(players) >= settings.TEAM_ROSTER_SIZE_MIN,
+                        len(players) <= settings.TEAM_ROSTER_SIZE_MAX,
+                        len(backups) <= settings.TEAM_ROSTER_BACKUP_SIZE_MAX]):
+                return Response({"error": f"roster and backup player count out of bounds; "
+                                          f"minimum roster size: {settings.TEAM_ROSTER_SIZE_MIN}"
+                                          f"maximum roster size: {settings.TEAM_ROSTER_SIZE_MAX}"
+                                          f"maximum backup players: {settings.TEAM_ROSTER_BACKUP_SIZE_MAX}"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
             try:
                 req_players_qs = TournamentPlayer.objects.filter(pk__in=players)
             except TypeError:
