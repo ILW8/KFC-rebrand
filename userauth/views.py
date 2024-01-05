@@ -43,7 +43,7 @@ class SessionDetails(viewsets.ViewSet):
         if request.session.get("osu_user_data") is not None:
             del request.session["osu_user_data"]
         logout(request)
-        return Response({"ok": "logged out"}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"ok": "logged out"}, status=status.HTTP_200_OK)
 
     @action(methods=['get', 'post'], detail=False)
     def login(self, request):
@@ -66,7 +66,7 @@ class SessionDetails(viewsets.ViewSet):
         user = request.user
         logout(request)
         user.delete()
-        return Response({"ok": "account deleted"}, status=status.HTTP_204_NO_CONTENT)
+        return Response(None, status=status.HTTP_204_NO_CONTENT)
 
 
 class OauthWithRedirect:

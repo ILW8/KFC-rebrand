@@ -47,8 +47,12 @@ DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 ALLOWED_HOSTS = ['api.vps.5wc.stagec.xyz', 'vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
 # CORS_ALLOW_ALL_ORIGINS = True
 # CORS_ALLOWED_ORIGINS = ['http://vps.5wc.stagec.xyz:8080', 'https://vps.5wc.stagec.xyz:8080']
-CORS_ALLOWED_ORIGINS = [f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
+CORS_ALLOWED_ORIGINS = ([f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
+                        + ["http://vps.5wc.stagec.xyz:2082"])
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = ([f"http://*.vps.5wc.stagec.xyz:{port}" for port in range(8000, 9000)]
+                        + ["http://*.vps.5wc.stagec.xyz:2082"])
+CSRF_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
 SESSION_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
