@@ -74,6 +74,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                                               team=tournament_team)
             tourney_player.save()
             channel_layer = get_channel_layer()
+            # noinspection PyArgumentList
             async_to_sync(channel_layer.group_send)(settings.CHANNELS_DISCORD_WS_GROUP_NAME,
                                                     {
                                                         "type": "registration.new",
