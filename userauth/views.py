@@ -1,7 +1,9 @@
+import json
+
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 import requests
 import urllib.parse
 from django.conf import settings
@@ -41,7 +43,7 @@ class SessionDetails(viewsets.ViewSet):
         if request.session.get("osu_user_data") is not None:
             del request.session["osu_user_data"]
         logout(request)
-        return Response({"ok": "logged out"}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"ok": "logged out"}, status=status.HTTP_200_OK)
 
     @action(methods=['get', 'post'], detail=False)
     def login(self, request):
@@ -64,11 +66,25 @@ class SessionDetails(viewsets.ViewSet):
         user = request.user
         logout(request)
         user.delete()
-        return Response({"ok": "account deleted"}, status=status.HTTP_204_NO_CONTENT)
+        return Response(None, status=status.HTTP_204_NO_CONTENT)
+
+
+class OauthWithRedirect:
+    REDIRECT_SUFFIX = None
+
+    def __init__(self):
+        pass
+
+    def get_redirect_url(self, request):
+        if self.REDIRECT_SUFFIX is None:
+            raise NotImplementedError("REDIRECT_SUFFIX was not specified")
+        return f"{request.scheme}://{request.get_host()}{self.REDIRECT_SUFFIX}"
 
 
 # todo: on osu login, invalidate previous logged-in user
-class OsuAuth(viewsets.ViewSet):
+class OsuAuth(viewsets.ViewSet, OauthWithRedirect):
+    REDIRECT_SUFFIX = settings.OSU_REDIRECT_URI_SUFFIX
+
     @action(methods=['get'], detail=False)
     def prompt_login(self, request):
         return_page = request.query_params.get("return_page", None)
@@ -76,7 +92,7 @@ class OsuAuth(viewsets.ViewSet):
                f"?response_type=code"
                f"&client_id={settings.OSU_CLIENT_ID}"
                f"&scope=identify"
-               f"&redirect_uri={urllib.parse.quote(settings.OSU_REDIRECT_URI)}"
+               f"&redirect_uri={urllib.parse.quote(self.get_redirect_url(request))}"
                f"&prompt=consent")
         if return_page is not None:
             uri += f"&state={return_page}"
@@ -92,11 +108,15 @@ class OsuAuth(viewsets.ViewSet):
         r = requests.post(f'{settings.OSU_OAUTH_ENDPOINT}/token',
                           data={'grant_type': 'authorization_code',
                                 'code': code,
-                                'redirect_uri': settings.OSU_REDIRECT_URI},
+                                'redirect_uri': self.get_redirect_url(request)},
                           headers={'Content-Type': 'application/x-www-form-urlencoded'},
                           auth=(settings.OSU_CLIENT_ID, settings.OSU_CLIENT_SECRET))
         if r.status_code != 200:
-            return Response(r.json(), status=r.status_code)
+            try:
+                return Response(r.json(), status=r.status_code)
+            except json.JSONDecodeError:
+                print(r.content)
+                return Response(r.content, status=r.status_code)
 
         auth_data = r.json()
         # fetch user information
@@ -115,7 +135,9 @@ class OsuAuth(viewsets.ViewSet):
         return Response({})
 
 
-class DiscordAuth(viewsets.ViewSet):
+class DiscordAuth(viewsets.ViewSet, OauthWithRedirect):
+    REDIRECT_SUFFIX = settings.DISCORD_REDIRECT_URI_SUFFIX
+
     @action(methods=['get'], detail=False)
     def prompt_login(self, request):
         return_page = request.query_params.get("return_page", None)
@@ -123,7 +145,7 @@ class DiscordAuth(viewsets.ViewSet):
                f"?response_type=code"
                f"&client_id={settings.DISCORD_CLIENT_ID}"
                f"&scope=identify"
-               f"&redirect_uri={urllib.parse.quote(settings.DISCORD_REDIRECT_URI)}"
+               f"&redirect_uri={urllib.parse.quote(self.get_redirect_url(request))}"
                f"&prompt=consent")
         if return_page is not None:
             uri += f"&state={return_page}"
@@ -140,7 +162,7 @@ class DiscordAuth(viewsets.ViewSet):
         data = {
             'grant_type': 'authorization_code',
             'code': code,
-            'redirect_uri': settings.DISCORD_REDIRECT_URI
+            'redirect_uri': self.get_redirect_url(request)
         }
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         r = requests.post(f'{settings.DISCORD_API_ENDPOINT}/oauth2/token',
@@ -177,3 +199,15 @@ class DiscordAuth(viewsets.ViewSet):
 
 def login_frontend(request):
     return render(request, "login.html", {})
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'id')
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+

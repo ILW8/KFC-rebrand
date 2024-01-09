@@ -13,6 +13,23 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
+
+# stolen from distutil, as distutil is deprecated in py3.10
+def strtobool(val):
+    """Convert a string representation of truth to true (1) or false (0).
+    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
+    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
+    'val' is anything else.
+    """
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError("invalid truth value %r" % (val,))
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,16 +39,20 @@ load_dotenv(BASE_DIR.joinpath(".env"))
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-u0r#lj965$_#(q18ld)bc8&3j^bs#bdfvje9k4!w#f)3bps*ip'
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", 'django-insecure-u0r#lj965$_#(q18ld)bc8&3j^bs#bdfvje9k4!w#f)3bps*ip')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 
 ALLOWED_HOSTS = ['api.vps.5wc.stagec.xyz', 'vps.5wc.stagec.xyz', '.localhost', '127.0.0.1', '[::1]']
 # CORS_ALLOW_ALL_ORIGINS = True
 # CORS_ALLOWED_ORIGINS = ['http://vps.5wc.stagec.xyz:8080', 'https://vps.5wc.stagec.xyz:8080']
-CORS_ALLOWED_ORIGINS = [f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
+CORS_ALLOWED_ORIGINS = ([f'http://vps.5wc.stagec.xyz:{port}' for port in range(8000, 9000)]
+                        + ["http://vps.5wc.stagec.xyz:2082"])
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = ([f"http://*.vps.5wc.stagec.xyz:{port}" for port in range(8000, 9000)]
+                        + ["http://*.vps.5wc.stagec.xyz:2082"])
+CSRF_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
 SESSION_COOKIE_DOMAIN = ".vps.5wc.stagec.xyz"
 
@@ -45,6 +66,7 @@ INSTALLED_APPS = [
     'daphne',
     'discord',
     'userauth',
+    'teammgmt',
     'channels',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -180,7 +202,8 @@ OAUTH_REDIRECT_PREFIX = os.environ.get("OAUTH_REDIRECT_PREFIX", "http://127.0.0.
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", None)
-DISCORD_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/discord/discord_code"
+DISCORD_REDIRECT_URI_SUFFIX = "/auth/discord/discord_code"
+DISCORD_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}{DISCORD_REDIRECT_URI_SUFFIX}"
 DISCORD_PSK = os.environ.get("DISCORD_PSK", "DONOTUSEINPRODUCTIONDONOTUSEINPRODUCTIONDONOTUSEINPRODUCTION")
 CHANNELS_DISCORD_WS_GROUP_NAME = "5wc_discord_signups"
 
@@ -188,4 +211,5 @@ OSU_API_ENDPOINT = "https://osu.ppy.sh/api/v2"
 OSU_OAUTH_ENDPOINT = "https://osu.ppy.sh/oauth"
 OSU_CLIENT_ID = os.environ.get("OSU_CLIENT_ID", None)
 OSU_CLIENT_SECRET = os.environ.get("OSU_CLIENT_SECRET", None)
-OSU_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}/auth/osu/code"
+OSU_REDIRECT_URI_SUFFIX = "/auth/osu/code"
+OSU_REDIRECT_URI = f"{OAUTH_REDIRECT_PREFIX}{OSU_REDIRECT_URI_SUFFIX}"
