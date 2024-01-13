@@ -26,8 +26,21 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get install -y python3-dev libmysqlclient-dev
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip && \
+        pip install codecov && \
         pip install -r requirements.txt
-    - name: Run Tests
+
+    - name: Run migrations
       run: |
-        python manage.py test --settings fivedigitworldcup.settings_test
+        python ./manage.py migrate --settings=fivedigitworldcup.settings_test
+
+    - name: Run tests
+      run: |
+        coverage run --source='.' --omit='*migrations*' manage.py test --settings=fivedigitworldcup.settings_test
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        fail_ci_if_error: true
