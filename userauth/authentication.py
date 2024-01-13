@@ -25,7 +25,7 @@ def filter_badges(badges: list[dict],
                                                 tzinfo=datetime.timezone.utc)):
     return [badge for badge in badges
             if not any([word.lower() in badge['description'].lower() for word in filter_phrases])
-            and datetime.datetime.fromisoformat(badge['awarded_at']) > cutoff_date]
+            and (cutoff_date is None or datetime.datetime.fromisoformat(badge['awarded_at']) > cutoff_date)]
 
 
 def bws(badges_count: int, global_rank: int) -> int:
