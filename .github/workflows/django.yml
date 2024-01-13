@@ -8,19 +8,15 @@ on:
 
 jobs:
   test-with-coverage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
       matrix:
         python-version: [ '3.10', '3.11' ]
-    # Docker Hub image that `container-job` executes in
-    container: ubuntu:22.04
 
-    # Service containers to run with `container-job`
     services:
       # Label used to access the service container
       redis:
-        # Docker Hub image
         image: redis
         # Set health checks to wait until redis has started
         options: >-
@@ -28,6 +24,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          - 6379:6379
 
     steps:
     - uses: actions/checkout@v3
