@@ -22,6 +22,10 @@ RUN python3 manage.py collectstatic --no-input
 CMD ["gunicorn", "--workers", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:80", "fivedigitworldcup.asgi:application"]
 
 
+FROM backend AS celery_worker
+CMD ["celery", "-A", "aaafivedigitworldcup", "worker", "-l", "INFO"]
+
+
 FROM ubuntu:22.04 AS statics_server
 RUN apt-get update && apt-get install -y nginx && rm -v /etc/nginx/nginx.conf
 

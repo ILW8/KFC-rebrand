@@ -218,3 +218,6 @@ OSU_REDIRECT_URI_SUFFIX = "/auth/osu/code"
 TEAM_ROSTER_SIZE_MIN = os.environ.get("TEAM_ROSTER_SIZE_MIN", 6)
 TEAM_ROSTER_SIZE_MAX = os.environ.get("TEAM_ROSTER_SIZE_MAX", 8)
 TEAM_ROSTER_BACKUP_SIZE_MAX = os.environ.get("TEAM_ROSTER_BACKUP_SIZE_MAX", 3)
+
+# CELERY_BACKEND_URL = 'redis://localhost:6379/0'  # not needed now... may need to re-enable it for chains/groups
+CELERY_BROKER_URL = 'redis://redis:6379/0;redis://127.0.0.1:6379/0'
