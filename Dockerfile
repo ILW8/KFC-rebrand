@@ -23,7 +23,7 @@ CMD ["gunicorn", "--workers", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", 
 
 
 FROM backend AS celery_worker
-CMD ["celery", "-A", "aaafivedigitworldcup", "worker", "-l", "INFO"]
+CMD ["celery", "-A", "fivedigitworldcup", "worker", "-l", "INFO"]
 
 
 FROM ubuntu:22.04 AS statics_server
