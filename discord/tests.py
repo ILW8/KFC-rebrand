@@ -58,9 +58,9 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertCountEqual(response.data['badges'], [])
 
-    def create_badge(self, badge_date=None):
-        if badge_date is None:
-            badge_date = datetime.datetime.now(datetime.timezone.utc)
+    def create_badge(self, badge_date):
+        # if badge_date is None:
+        #     badge_date = datetime.datetime.now(datetime.timezone.utc)
         badges = self.sample_badges.copy()
         badges += [
             {
@@ -137,17 +137,19 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         self.assertCountEqual(self.sample_badges, response.data['badges'])
 
     def test_badges_present_in_details(self):
-        for badge in self.sample_badges:
-            TournamentPlayerBadge.objects.create(user=self.test_tourney_player,
-                                                 description=badge['description'],
-                                                 award_date=datetime.datetime.fromisoformat(badge['awarded_at']),
-                                                 url=badge['url'],
-                                                 image_url=badge['image_url'],
-                                                 image_url_2x=badge['image_url_2x'])
+        self.create_badges_in_db(self.sample_badges)
 
-        request = self.request_factory.get(f'/registrants/?limit=1')
+        request = self.request_factory.get(f'/registrants/{self.test_user.pk}/')
         registrant_detail = TournamentPlayerViewSet.as_view({'get': 'retrieve'})
         response = registrant_detail(request, pk=self.test_user.pk)
 
         self.assertEqual(len(self.sample_badges), len(response.data['badges']))
         self.assertCountEqual(self.sample_badges, response.data['badges'])
+
+    def test_badges_not_present_in_list(self):
+        self.create_badges_in_db(self.sample_badges)
+
+        request = self.request_factory.get(f'/registrants/?limit=1')
+        registrant_detail = TournamentPlayerViewSet.as_view({'get': 'list'})
+        response = registrant_detail(request, pk=self.test_user.pk)
+        print(response.data)

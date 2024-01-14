@@ -115,7 +115,8 @@ class TournamentPlayerSerializerWithBadges(TournamentPlayerSerializer):
 
 
 class TournamentPlayerViewSet(viewsets.ModelViewSet):
-    queryset = TournamentPlayer.objects.all()
+    # I really don't get why `order_by` is needed only during tests to suppress UnorderedObjectListWarning
+    queryset = TournamentPlayer.objects.order_by('pk').all()
     permission_classes = [PreSharedKeyAuthentication | ReadOnly]
 
     def get_serializer_class(self):
