@@ -1,0 +1,11 @@
+http:
+  services:
+    frontend-service:
+      loadBalancer:
+        servers:
+          - url: "https://5wcstaging.stagec.xyz/"  # placeholder...
+
+  routers:
+    frontend-router:
+      rule: "Host(`vps.5wc.stagec.xyz`)"
+      service: frontend-service

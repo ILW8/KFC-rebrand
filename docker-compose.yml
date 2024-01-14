@@ -1,10 +1,53 @@
 version: '3.10'
 
-# helper compose .yml for development purposes
 services:
   redis:
-    container_name: redis
     image: redis
     ports:
       - "6379:6379"
     restart: on-failure
+
+#  whoami:
+#    # A container that exposes an API to show its IP address
+#    image: traefik/whoami
+#    labels:
+#      - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
+
+  nginxstatic:
+    build:
+      context: .
+      target: statics_server
+    expose:
+      - "80"
+    labels:
+      - "traefik.http.routers.nginxstatic.rule=PathPrefix(`/static`)"
+      - "traefik.http.routers.nginxstatic.middlewares=nginx-strip-static@docker"
+      - "traefik.http.middlewares.nginx-strip-static.stripprefix.prefixes=/static"
+      - "traefik.http.middlewares.nginx-strip-static.stripprefix.forceSlash=true"
+
+  gunicorn:
+    build:
+      context: .
+      target: backend
+    expose:
+      - "80"
+    labels:
+      - "traefik.http.routers.gunicorn.rule=Host(`api.vps.5wc.stagec.xyz`)"
+
+  traefik:
+    image: traefik:v2.10
+    command:
+     - "--api.insecure=true"
+     - "--providers.docker"
+     - "--entryPoints.web.address=:80"
+     - "--entryPoints.websecure.address=:443"
+     - "--providers.file.directory=/etc/traefik/dynamic.yml"
+    ports:
+      - "80:80"
+      - "443:443"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml
