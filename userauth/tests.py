@@ -5,6 +5,22 @@ from userauth.authentication import filter_badges, FILTER_PHRASES, bws, DiscordA
 from rest_framework.test import APIRequestFactory
 from django.contrib.auth import authenticate
 
+from userauth.views import DiscordAuth, OsuAuth
+
+
+class NoOpAuthEndpointsTestCase(TestCase):
+    def test_osu_auth_list_empty(self):
+        factory = APIRequestFactory()
+        osu_auth_view = OsuAuth.as_view({'get': 'list'})
+        response = osu_auth_view(factory.get('/auth/osu/'))
+        self.assertDictEqual({"727": "when you see it"}, response.data)
+
+    def test_discord_auth_list_empty(self):
+        factory = APIRequestFactory()
+        discord_auth_view = DiscordAuth.as_view({'get': 'list'})
+        response = discord_auth_view(factory.get('/auth/discord/'))
+        self.assertDictEqual({"727": "when you see it"}, response.data)
+
 
 class DiscordAndOsuLoginTestCase(TestCase):
     @parameterized.expand([
