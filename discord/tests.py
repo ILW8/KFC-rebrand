@@ -2,6 +2,7 @@ import datetime
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from parameterized import parameterized
 from rest_framework.test import APIRequestFactory
 
 from discord.views import TournamentPlayerViewSet
@@ -23,7 +24,6 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
             osu_stats_updated=datetime.datetime.now(datetime.timezone.utc),
             osu_flag="GB",
             team=self.test_team)
-        # print(f"created tourney player: {self.test_tourney_player}")
 
         self.sample_badges = [
             {
@@ -59,8 +59,6 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         self.assertCountEqual(response.data['badges'], [])
 
     def create_badge(self, badge_date):
-        # if badge_date is None:
-        #     badge_date = datetime.datetime.now(datetime.timezone.utc)
         badges = self.sample_badges.copy()
         badges += [
             {
@@ -73,11 +71,8 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         ]
         return badges
 
-    # def prep_request_with_badge_cutoff(self, offsets_seconds=0):
     def prep_request_with_badge_cutoff(self, badge_award_date_str, cutoff_date):
-        # badge_award_date = "2019-11-19T21:25:58+00:00"
-        badge_award_date = badge_award_date_str
-        badges = self.create_badge(badge_award_date)
+        badges = self.create_badge(badge_award_date_str)
         self.create_badges_in_db(badges)
 
         cutoff_date_ts = int(cutoff_date.timestamp())
@@ -104,10 +99,16 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         self.assertTrue(len(badges) == len(response.data['badges']))
         self.assertCountEqual(badges, response.data['badges'])
 
-    def test_badges_custom_cutoff_invalid_ts(self):
+    # noinspection SpellCheckingInspection
+    @parameterized.expand([
+        ("2020-01-01", ),  # not timestamp
+        ("gjkhafgkhadfsg", ),  # not even a date
+        ("1705199901.192", ),  # includes fractional part
+    ])
+    def test_badges_custom_cutoff_invalid_ts(self, invalid_timestamp):
         self.create_badges_in_db(self.sample_badges)
 
-        request = self.request_factory.get(f'/registrants/{self.test_user.pk}/?badge_cutoff_date=2020-01-01')
+        request = self.request_factory.get(f'/registrants/{self.test_user.pk}/?badge_cutoff_date={invalid_timestamp}')
         registrant_detail = TournamentPlayerViewSet.as_view({'get': 'retrieve'})
         response = registrant_detail(request, pk=self.test_user.pk)
 
