@@ -69,7 +69,12 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class BadgeSerializer(serializers.HyperlinkedModelSerializer):
-    awarded_at = serializers.CharField(source='award_date')
+    # awarded_at = serializers.DateTimeField(source='award_date', format='%Y-%m-%dT%H:%M:%S%:z')  # %:z does not work
+    awarded_at = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_awarded_at(badge):
+        return datetime.datetime.isoformat(badge.award_date)
 
     class Meta:
         model = TournamentPlayerBadge
@@ -102,7 +107,8 @@ class TournamentPlayerSerializerWithBadges(TournamentPlayerSerializer):
                 cutoff_date = datetime.datetime.fromtimestamp(int(cutoff_date), tz=datetime.timezone.utc)
             except ValueError:
                 raise ValueError("Invalid badge_cutoff_date provided, please provide a unix timestamp")
-        return filter_badges(unfiltered_badges, [], cutoff_date=cutoff_date)
+            return filter_badges(unfiltered_badges, [], cutoff_date=cutoff_date)
+        return filter_badges(unfiltered_badges, [])  # use default cutoff
 
     class Meta(TournamentPlayerSerializer.Meta):
         fields = TournamentPlayerSerializer.Meta.fields + ['badges', ]
