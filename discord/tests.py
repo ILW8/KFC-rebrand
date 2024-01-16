@@ -301,4 +301,4 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         request = self.request_factory.get(f'/registrants/?limit=1')
         registrant_detail = TournamentPlayerViewSet.as_view({'get': 'list'})
         response = registrant_detail(request, pk=self.test_user.pk)
-        print(response.data)
+        self.assertTrue("badges" not in response.data)
