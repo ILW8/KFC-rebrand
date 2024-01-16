@@ -33,6 +33,7 @@ class TournamentPlayer(models.Model):
         return f"{self.osu_username} ({self.osu_flag}|{self.discord_global_name})"
 
     class Meta:
+        ordering = ['pk']
         indexes = [
             models.Index(fields=['discord_user_id', 'osu_user_id']),
             models.Index(fields=['osu_user_id']),

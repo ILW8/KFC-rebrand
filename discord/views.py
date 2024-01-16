@@ -45,7 +45,7 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
     team_id = serializers.ReadOnlyField()
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     rank_standard = serializers.Field(source='osu_rank_std')
-    bws_rank = serializers.Field(source='osu_rank_std_bws')
+    rank_standard_bws = serializers.Field(source='osu_rank_std_bws')
 
     # user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all())
 
@@ -60,7 +60,7 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
                   'osu_flag',
                   'osu_stats_updated',
                   'rank_standard',
-                  'bws_rank',
+                  'rank_standard_bws',
                   'is_organizer',
                   'in_roster',
                   'in_backup_roster',
@@ -115,8 +115,7 @@ class TournamentPlayerSerializerWithBadges(TournamentPlayerSerializer):
 
 
 class TournamentPlayerViewSet(viewsets.ModelViewSet):
-    # I really don't get why `order_by` is needed only during tests to suppress UnorderedObjectListWarning
-    queryset = TournamentPlayer.objects.order_by('pk').all()
+    queryset = TournamentPlayer.objects.all()
     permission_classes = [PreSharedKeyAuthentication | ReadOnly]
 
     def get_serializer_class(self):
