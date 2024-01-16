@@ -1,16 +1,16 @@
-from django.contrib.auth.models import User, AnonymousUser
-from django.db.models import Q
-from django.http import Http404
-from rest_framework.authentication import TokenAuthentication
-from rest_framework import exceptions, permissions, status
-from django.utils.translation import gettext_lazy as _
-from rest_framework.permissions import BasePermission
+import datetime
+
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser, User
+from django.http import Http404
+from django.utils.translation import gettext_lazy as _
+from rest_framework import exceptions, permissions, serializers, status, viewsets
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from teammgmt.models import TournamentTeam
-from userauth.models import TournamentPlayer
-from rest_framework import serializers, viewsets
+from userauth.authentication import filter_badges
+from userauth.models import TournamentPlayer, TournamentPlayerBadge
 
 
 class ReadOnly(BasePermission):
@@ -40,9 +40,13 @@ class TeamOrganizer(BasePermission):
         return True
 
 
-# Create your views here.
 class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='tournamentplayer-detail')
+    team_id = serializers.ReadOnlyField()
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    rank_standard = serializers.Field(source='osu_rank_std')
+    rank_standard_bws = serializers.Field(source='osu_rank_std_bws')
+
     # user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all())
 
     class Meta:
@@ -54,6 +58,9 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
                   'osu_user_id',
                   'osu_username',
                   'osu_flag',
+                  'osu_stats_updated',
+                  'rank_standard',
+                  'rank_standard_bws',
                   'is_organizer',
                   'in_roster',
                   'in_backup_roster',
@@ -61,10 +68,60 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
                   'team']
 
 
+class BadgeSerializer(serializers.HyperlinkedModelSerializer):
+    # awarded_at = serializers.DateTimeField(source='award_date', format='%Y-%m-%dT%H:%M:%S%:z')  # %:z does not work
+    awarded_at = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_awarded_at(badge):
+        return datetime.datetime.isoformat(badge.award_date)
+
+    class Meta:
+        model = TournamentPlayerBadge
+        fields = ['description',
+                  'awarded_at',
+                  'url',
+                  'image_url',
+                  'image_url_2x']
+
+
+class TournamentPlayerSerializerWithBadges(TournamentPlayerSerializer):
+    # tournamentplayerbadge_set is the default `related_name` for badge -> tourney player relationship
+    badges = serializers.SerializerMethodField()
+
+    # use this to add `filtered_badge_count`
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['filtered_badges_count'] = len(representation['badges'])
+        return representation
+
+    def get_badges(self, tournament_player: TournamentPlayer):
+        serializer = BadgeSerializer(instance=TournamentPlayerBadge.objects.filter(user=tournament_player),
+                                     many=True,
+                                     read_only=True,
+                                     source='tournamentplayerbadge_set')
+        unfiltered_badges = serializer.data
+        cutoff_date = self.context['request'].query_params.get('badge_cutoff_date', None)
+        if cutoff_date is not None:
+            try:
+                cutoff_date = datetime.datetime.fromtimestamp(int(cutoff_date), tz=datetime.timezone.utc)
+            except ValueError:
+                raise ValueError("Invalid badge_cutoff_date provided, please provide a unix timestamp")
+            return filter_badges(unfiltered_badges, [], cutoff_date=cutoff_date)
+        return filter_badges(unfiltered_badges, [])  # use default cutoff
+
+    class Meta(TournamentPlayerSerializer.Meta):
+        fields = TournamentPlayerSerializer.Meta.fields + ['badges', ]
+
+
 class TournamentPlayerViewSet(viewsets.ModelViewSet):
-    serializer_class = TournamentPlayerSerializer
     queryset = TournamentPlayer.objects.all()
     permission_classes = [PreSharedKeyAuthentication | ReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return TournamentPlayerSerializerWithBadges
+        return TournamentPlayerSerializer
 
     def retrieve(self, request, *args, **kwargs):
         try:
