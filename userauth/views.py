@@ -149,7 +149,7 @@ class OsuAuth(viewsets.ViewSet, OauthWithRedirect):
 
     @staticmethod
     def list(request):
-        return Response({})
+        return Response({"727": "when you see it"})
 
 
 class DiscordAuth(viewsets.ViewSet, OauthWithRedirect):
@@ -211,9 +211,10 @@ class DiscordAuth(viewsets.ViewSet, OauthWithRedirect):
 
     @staticmethod
     def list(request):
-        return Response({})
+        return Response({"727": "when you see it"})
 
 
+# todo: remove
 def login_frontend(request):
     return render(request, "login.html", {})
 
