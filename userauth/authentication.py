@@ -20,12 +20,28 @@ FILTER_PHRASES = {"contrib", "nomination", "assessment", "moderation", "spotligh
 
 
 def filter_badges(badges: list[dict],
-                  filter_phrases: Iterable[str],
+                  filter_phrases: Iterable[str] = None,
                   cutoff_date=datetime.datetime(2021, 1, 1, 0, 0, 0,
                                                 tzinfo=datetime.timezone.utc)):
+    if filter_phrases is None:
+        filter_phrases = FILTER_PHRASES
     return [badge for badge in badges
             if not any([word.lower() in badge['description'].lower() for word in filter_phrases])
             and (cutoff_date is None or datetime.datetime.fromisoformat(badge['awarded_at']) > cutoff_date)]
+
+
+def prep_badges_for_db(osu_data, tourney_player):
+    # cutoff_date date of 0 timestamp to keep all badges in DB
+    all_badges = filter_badges(osu_data['badges'],
+                               cutoff_date=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc))
+    db_badges = [TournamentPlayerBadge(user=tourney_player,
+                                       description=badge['description'],
+                                       award_date=datetime.datetime.fromisoformat(badge['awarded_at']),
+                                       url=badge['url'],
+                                       image_url=badge['image_url'],
+                                       image_url_2x=badge['image@2x_url'])
+                 for badge in all_badges]
+    return all_badges, db_badges
 
 
 def bws(badges_count: int, global_rank: int) -> int:
@@ -133,22 +149,12 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                                               osu_stats_updated=datetime.datetime.now(datetime.timezone.utc))
 
             # save user badges
-            all_badges = filter_badges(
-                osu_data['badges'],
-                FILTER_PHRASES,
-                cutoff_date=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)  # keep all badges in DB
-            )
-            db_badges = [TournamentPlayerBadge(user=tourney_player,
-                                               description=badge['description'],
-                                               award_date=datetime.datetime.fromisoformat(badge['awarded_at']),
-                                               url=badge['url'],
-                                               image_url=badge['image_url'],
-                                               image_url_2x=badge['image@2x_url'])
-                         for badge in all_badges]
+            all_badges, db_badges = prep_badges_for_db(osu_data, tourney_player)
+
             TournamentPlayerBadge.objects.bulk_create(db_badges)
 
             # filter again to filter by cutoff date, calculate BWS
-            tourney_player.osu_rank_std_bws = bws(len(filter_badges(all_badges, FILTER_PHRASES)),
+            tourney_player.osu_rank_std_bws = bws(len(filter_badges(all_badges)),
                                                   tourney_player.osu_rank_std)
             tourney_player.save()
 

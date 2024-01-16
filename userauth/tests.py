@@ -1,7 +1,7 @@
 import datetime
 from django.test import TestCase
 from parameterized import parameterized
-from userauth.authentication import filter_badges, FILTER_PHRASES, bws, DiscordAndOsuAuthBackend
+from userauth.authentication import filter_badges, bws, DiscordAndOsuAuthBackend
 from rest_framework.test import APIRequestFactory
 from django.contrib.auth import authenticate
 
@@ -690,7 +690,6 @@ class BadgeFilterTestCase(TestCase):
         :return:
         """
         filtered_badges = filter_badges(badges,
-                                        FILTER_PHRASES,
                                         cutoff_date=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc))
         self.assertCountEqual(filtered_badges, expected)
 

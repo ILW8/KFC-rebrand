@@ -6,9 +6,11 @@ from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, permissions, serializers, status, viewsets
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import BasePermission
+from rest_framework.decorators import action
+from rest_framework.permissions import BasePermission, IsAdminUser
 from rest_framework.response import Response
 
+from discord import tasks
 from userauth.authentication import filter_badges
 from userauth.models import TournamentPlayer, TournamentPlayerBadge
 
@@ -44,8 +46,8 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='tournamentplayer-detail')
     team_id = serializers.ReadOnlyField()
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    rank_standard = serializers.Field(source='osu_rank_std')
-    rank_standard_bws = serializers.Field(source='osu_rank_std_bws')
+    rank_standard = serializers.ReadOnlyField(source='osu_rank_std')
+    rank_standard_bws = serializers.ReadOnlyField(source='osu_rank_std_bws')
 
     # user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all())
 
@@ -119,9 +121,22 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
     permission_classes = [PreSharedKeyAuthentication | ReadOnly]
 
     def get_serializer_class(self):
+        # noinspection PyTestUnpassedFixture
         if self.action == "retrieve":
             return TournamentPlayerSerializerWithBadges
         return TournamentPlayerSerializer
+
+    @action(detail=False, permission_classes=[IsAdminUser], methods=["POST"])
+    def update_all_users(self, request):
+        tasks.update_users.delay()
+        return Response({"message": "Scheduled all users to be updated"})
+
+    @action(detail=True, permission_classes=[IsAdminUser], methods=["POST"])
+    def update_user(self, request, **kwargs):
+        tournament_player = self.get_object()
+        tasks.update_user.delay(tournament_player.osu_user_id)
+        return Response({"message": f"Scheduled {tournament_player.osu_username} ({tournament_player.osu_user_id}) "
+                                    f"for update"})
 
     def retrieve(self, request, *args, **kwargs):
         try:
