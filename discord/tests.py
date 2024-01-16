@@ -32,6 +32,31 @@ class FetchOsuUserStatsTestCase(TestCase):
                                                                 tz=datetime.timezone.utc
                                                             ))
 
+    @patch('discord.tasks.update_users.delay')
+    def test_update_all_users_api(self, mocked_tasks_update_users):
+        factory = APIRequestFactory()
+        request = factory.post(f'/registrants/update_users')
+        update_all_users_action = TournamentPlayerViewSet.as_view({'post': 'update_all_users'},
+                                                                  permission_classes=[])
+        res = update_all_users_action(request)
+
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(1, mocked_tasks_update_users.call_count)
+
+    @patch('discord.tasks.update_user.delay')
+    def test_update_specific_user_api(self, mocked_tasks_update_user):
+        factory = APIRequestFactory()
+        request = factory.post(f'/registrants/{self.tourney_user}/update_users')
+        update_all_users_action = TournamentPlayerViewSet.as_view({'post': 'update_user'},
+                                                                  permission_classes=[],
+                                                                  detail=True)
+        res = update_all_users_action(request, pk=self.tourney_user.pk)
+
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(1, mocked_tasks_update_user.call_count)
+        mocked_tasks_update_user.assert_called_with(self.tourney_user.osu_user_id)
+
+
     def test_get_osu_token_invalid_credentials(self):
         response = MockResponse({}, 401)
 
