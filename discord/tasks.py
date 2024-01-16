@@ -11,8 +11,8 @@ import requests
 
 
 def get_osu_token() -> str | None:
-    token = cache.get("osu_token", None)
-    if token is None:
+    token_dict = cache.get("osu_token", None)
+    if token_dict is None:
         r = requests.post("https://osu.ppy.sh/oauth/token", {
             "client_id": settings.OSU_CLIENT_ID,
             "client_secret": settings.OSU_CLIENT_SECRET,
@@ -21,12 +21,13 @@ def get_osu_token() -> str | None:
         })
         if r.status_code != 200:
             print(f"[get_osu_token] got status code {r.status_code}")
+            cache.delete("osu_token")
             return None
         response_data = r.json()
         cache.set("osu_token", response_data, timeout=response_data['expires_in'] - 30)
 
         return response_data['access_token']
-    return None
+    return token_dict['access_token']
 
 
 @shared_task(rate_limit="2/s")  # RATE LIMIT IS PER WORKER -- ONLY RUN ONE WORKER
@@ -70,7 +71,7 @@ def update_users(user_ids: list[int] | None = None):
     :return: None
     """
     if user_ids is None:
-        all_users = TournamentPlayerBadge.objects.all()
+        all_users = TournamentPlayer.objects.all()
         user_ids = [user.osu_user_id for user in all_users]
     for user_id in user_ids:
         update_user.delay(user_id)
