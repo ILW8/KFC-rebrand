@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+import tldextract
 
 
 # stolen from distutil, as distutil is deprecated in py3.10
@@ -47,6 +48,7 @@ DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 
 _allowed_schemes: list = os.environ.get("ALLOWED_SCHEMES", "https").split(",")
 _frontend_domain: str = os.environ.get("FRONTEND_DOMAIN", "vps.5wc.stagec.xyz")
+_parsed_frontend_domain = tldextract.extract(_frontend_domain)
 _allowed_hosts: list = os.environ.get("ALLOWED_HOSTS", _frontend_domain).split(",")
 _allowed_ports: list[int] = list(map(int, os.environ.get("ALLOWED_PORTS", "443").split(",")))
 
@@ -62,8 +64,11 @@ CSRF_TRUSTED_ORIGINS = [f"{scheme}://*.{hostname}:{port}"
                         for scheme in _allowed_schemes
                         for hostname in _allowed_hosts
                         for port in _allowed_ports]
-CSRF_COOKIE_DOMAIN = f".{_frontend_domain}"
-SESSION_COOKIE_DOMAIN = f".{_frontend_domain}"
+CSRF_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
+SESSION_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -124,10 +129,10 @@ WSGI_APPLICATION = 'fivedigitworldcup.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
+    'test_local': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    },
     'default': {
         # 'ENGINE': 'django.db.backends.mysql',
         'ENGINE': 'django_psdb_engine',
