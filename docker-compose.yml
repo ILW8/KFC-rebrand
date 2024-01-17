@@ -58,7 +58,6 @@ services:
      - "--entryPoints.traefik-api.address=:2082"
      - "--providers.file.directory=/etc/traefik/dynamic.yml"
     ports:
-      - "80:80"
       - "443:443"
       - "2082:2082"
     volumes:
