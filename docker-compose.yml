@@ -54,7 +54,6 @@ services:
      - "--api=true"
      - "--accesslog=true"
      - "--providers.docker"
-     - "--entryPoints.web.address=:80"
      - "--entryPoints.websecure.address=:443"
      - "--entryPoints.traefik-api.address=:2082"
      - "--providers.file.directory=/etc/traefik/dynamic.yml"
