@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import datetime
 import os
 from dotenv import load_dotenv
 from pathlib import Path
@@ -221,9 +222,13 @@ OSU_CLIENT_ID = os.environ.get("OSU_CLIENT_ID", None)
 OSU_CLIENT_SECRET = os.environ.get("OSU_CLIENT_SECRET", None)
 OSU_REDIRECT_URI_SUFFIX = "/auth/osu/code"
 
-TEAM_ROSTER_SIZE_MIN = os.environ.get("TEAM_ROSTER_SIZE_MIN", 6)
-TEAM_ROSTER_SIZE_MAX = os.environ.get("TEAM_ROSTER_SIZE_MAX", 8)
-TEAM_ROSTER_BACKUP_SIZE_MAX = os.environ.get("TEAM_ROSTER_BACKUP_SIZE_MAX", 3)
+TEAM_ROSTER_SIZE_MIN = int(os.environ.get("TEAM_ROSTER_SIZE_MIN", 6))  # fatal if not parseable
+TEAM_ROSTER_SIZE_MAX = int(os.environ.get("TEAM_ROSTER_SIZE_MAX", 8))
+TEAM_ROSTER_BACKUP_SIZE_MAX = int(os.environ.get("TEAM_ROSTER_BACKUP_SIZE_MAX", 3))
+TEAM_ROSTER_REGISTRATION_START = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_START")),
+                                                                 tz=datetime.timezone.utc)
+TEAM_ROSTER_REGISTRATION_END = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_END")),
+                                                               tz=datetime.timezone.utc)
 
 # CELERY_BACKEND_URL = 'redis://localhost:6379/0'  # not needed now... may need to re-enable it for chains/groups
 CELERY_BROKER_URL = 'redis://redis:6379/0;redis://127.0.0.1:6379/0'

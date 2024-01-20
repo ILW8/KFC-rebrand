@@ -1,3 +1,5 @@
+import datetime
+
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.db import transaction, IntegrityError
@@ -91,6 +93,22 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
         """
         team = self.get_object()
         if request.method == "PATCH":
+            request_time = datetime.datetime.now(tz=datetime.timezone.utc)
+            if request_time < settings.TEAM_ROSTER_REGISTRATION_START:
+                delta_seconds = (settings.TEAM_ROSTER_REGISTRATION_START - request_time)
+                delta_seconds = delta_seconds - datetime.timedelta(microseconds=delta_seconds.microseconds)  # del usec
+                return Response(
+                    {"error": f"Registration opens in {delta_seconds} ({delta_seconds.total_seconds():.0f} seconds)."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            if request_time > settings.TEAM_ROSTER_REGISTRATION_END:
+                delta_seconds = request_time - settings.TEAM_ROSTER_REGISTRATION_START
+                delta_seconds = delta_seconds - datetime.timedelta(microseconds=delta_seconds.microseconds)
+                return Response(
+                    {"error": f"Registration closed {delta_seconds} ago ({delta_seconds.total_seconds():.0f} seconds)."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
             if not ((required_fields := {'players', 'backups'}) <= (keys_provided := request.data.keys())):
                 return Response({"error": f"required field(s) "
                                           f"missing: {(keys_provided & required_fields) ^ required_fields}"},
@@ -98,15 +116,15 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
             players = request.data['players']
             backups = request.data['backups']
 
-            # todo: enforce registration time window cutoff
-
             # check roster size
             if not all([len(players) >= settings.TEAM_ROSTER_SIZE_MIN,
                         len(players) <= settings.TEAM_ROSTER_SIZE_MAX,
                         len(backups) <= settings.TEAM_ROSTER_BACKUP_SIZE_MAX]):
                 return Response({"error": f"roster and backup player count out of bounds; "
-                                          f"minimum roster size: {settings.TEAM_ROSTER_SIZE_MIN}"
-                                          f"maximum roster size: {settings.TEAM_ROSTER_SIZE_MAX}"
+                                          f"request roster size: {len(players)}, "
+                                          f"request backups size: {len(backups)}, "
+                                          f"minimum roster size: {settings.TEAM_ROSTER_SIZE_MIN}, "
+                                          f"maximum roster size: {settings.TEAM_ROSTER_SIZE_MAX}, "
                                           f"maximum backup players: {settings.TEAM_ROSTER_BACKUP_SIZE_MAX}"},
                                 status=status.HTTP_400_BAD_REQUEST)
 
