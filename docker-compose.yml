@@ -6,11 +6,15 @@ services:
     ports:
       - "6379:6379"
     restart: on-failure
+    labels:
+      - "traefik.enable=false"
 
   celery_worker:
     build:
       context: .
       target: celery_worker
+    volumes:
+      - ./.env:/app/.env
 
   nginxstatic:
     build:
@@ -19,7 +23,9 @@ services:
     expose:
       - "80"
     labels:
-      - "traefik.http.routers.nginxstatic.rule=PathPrefix(`/static`)"
+      - "traefik.http.routers.nginxstatic.entryPoints=websecure"
+      - "traefik.http.routers.nginxstatic.tls"
+      - "traefik.http.routers.nginxstatic.rule=Host(`api.stagec.xyz`)&&PathPrefix(`/static`)"
       - "traefik.http.routers.nginxstatic.middlewares=nginx-strip-static@docker"
       - "traefik.http.middlewares.nginx-strip-static.stripprefix.prefixes=/static"
       - "traefik.http.middlewares.nginx-strip-static.stripprefix.forceSlash=true"
@@ -31,22 +37,37 @@ services:
     expose:
       - "80"
     labels:
-      - "traefik.http.routers.gunicorn.rule=Host(`api.vps.5wc.stagec.xyz`)"
+      - "traefik.http.routers.gunicorn.entryPoints=websecure"
+      - "traefik.http.routers.gunicorn.rule=Host(`api.stagec.xyz`)&&!PathPrefix(`/admin`)"
+      - "traefik.http.routers.gunicorn.tls"
+
+      - "traefik.http.routers.gunicorn-django-admin.entryPoints=websecure"
+      - "traefik.http.routers.gunicorn-django-admin.rule=Host(`api.stagec.xyz`)&&PathPrefix(`/admin`)"
+      - "traefik.http.routers.gunicorn-django-admin.middlewares=auth"
+      - "traefik.http.routers.gunicorn-django-admin.tls="
+    volumes:
+      - ./.env:/app/.env
 
   traefik:
     image: traefik:v2.10
     command:
-     - "--api.insecure=true"
+     - "--api=true"
+     - "--accesslog=true"
      - "--providers.docker"
-     - "--entryPoints.web.address=:80"
      - "--entryPoints.websecure.address=:443"
+     - "--entryPoints.traefik-api.address=:2082"
      - "--providers.file.directory=/etc/traefik/dynamic.yml"
     ports:
-      - "80:80"
       - "443:443"
-      # The Web UI (enabled by --api.insecure=true)
-      - "8080:8080"
+      - "2082:2082"
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml
+    labels:
+      - "traefik.http.routers.api.entryPoints=traefik-api"
+      - "traefik.http.routers.api.rule=Host(`traefik.stagec.xyz`,`localhost`)"
+      - "traefik.http.routers.api.service=api@internal"
+#      - "traefik.http.routers.api.tls="
+      - "traefik.http.routers.api.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=5wc-admin:$$apr1$$8oeds52v$$hQK3dfyNECLy/FfMq5Sxv1"

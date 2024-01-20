@@ -56,7 +56,6 @@ class FetchOsuUserStatsTestCase(TestCase):
         self.assertEqual(1, mocked_tasks_update_user.call_count)
         mocked_tasks_update_user.assert_called_with(self.tourney_user.osu_user_id)
 
-
     def test_get_osu_token_invalid_credentials(self):
         response = MockResponse({}, 401)
 

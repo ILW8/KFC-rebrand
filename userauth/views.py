@@ -187,7 +187,9 @@ class DiscordAuth(viewsets.ViewSet, OauthWithRedirect):
                           headers=headers,
                           auth=(settings.DISCORD_CLIENT_ID, settings.DISCORD_CLIENT_SECRET))
         if r.status_code != 200:
-            return Response(r.json(), status=r.status_code)
+            return Response({"message": "failed trading code for token",
+                             "payload": {k: v if k != 'code' else '<redacted>' for k, v in data.items()},
+                             "error": r.json()}, status=r.status_code)
         auth_data = r.json()
 
         # fetch user information

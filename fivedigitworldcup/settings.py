@@ -9,9 +9,11 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import datetime
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+import tldextract
 
 
 # stolen from distutil, as distutil is deprecated in py3.10
@@ -47,6 +49,7 @@ DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 
 _allowed_schemes: list = os.environ.get("ALLOWED_SCHEMES", "https").split(",")
 _frontend_domain: str = os.environ.get("FRONTEND_DOMAIN", "vps.5wc.stagec.xyz")
+_parsed_frontend_domain = tldextract.extract(_frontend_domain)
 _allowed_hosts: list = os.environ.get("ALLOWED_HOSTS", _frontend_domain).split(",")
 _allowed_ports: list[int] = list(map(int, os.environ.get("ALLOWED_PORTS", "443").split(",")))
 
@@ -62,8 +65,11 @@ CSRF_TRUSTED_ORIGINS = [f"{scheme}://*.{hostname}:{port}"
                         for scheme in _allowed_schemes
                         for hostname in _allowed_hosts
                         for port in _allowed_ports]
-CSRF_COOKIE_DOMAIN = f".{_frontend_domain}"
-SESSION_COOKIE_DOMAIN = f".{_frontend_domain}"
+CSRF_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
+SESSION_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -124,10 +130,10 @@ WSGI_APPLICATION = 'fivedigitworldcup.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
+    'test_local': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    },
     'default': {
         # 'ENGINE': 'django.db.backends.mysql',
         'ENGINE': 'django_psdb_engine',
@@ -216,9 +222,13 @@ OSU_CLIENT_ID = os.environ.get("OSU_CLIENT_ID", None)
 OSU_CLIENT_SECRET = os.environ.get("OSU_CLIENT_SECRET", None)
 OSU_REDIRECT_URI_SUFFIX = "/auth/osu/code"
 
-TEAM_ROSTER_SIZE_MIN = os.environ.get("TEAM_ROSTER_SIZE_MIN", 6)
-TEAM_ROSTER_SIZE_MAX = os.environ.get("TEAM_ROSTER_SIZE_MAX", 8)
-TEAM_ROSTER_BACKUP_SIZE_MAX = os.environ.get("TEAM_ROSTER_BACKUP_SIZE_MAX", 3)
+TEAM_ROSTER_SIZE_MIN = int(os.environ.get("TEAM_ROSTER_SIZE_MIN", 6))  # fatal if not parseable
+TEAM_ROSTER_SIZE_MAX = int(os.environ.get("TEAM_ROSTER_SIZE_MAX", 8))
+TEAM_ROSTER_BACKUP_SIZE_MAX = int(os.environ.get("TEAM_ROSTER_BACKUP_SIZE_MAX", 3))
+TEAM_ROSTER_REGISTRATION_START = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_START", 1705946400)),
+                                                                 tz=datetime.timezone.utc)
+TEAM_ROSTER_REGISTRATION_END = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_END", 1707696000)),
+                                                               tz=datetime.timezone.utc)
 
 # CELERY_BACKEND_URL = 'redis://localhost:6379/0'  # not needed now... may need to re-enable it for chains/groups
 CELERY_BROKER_URL = 'redis://redis:6379/0;redis://127.0.0.1:6379/0'
