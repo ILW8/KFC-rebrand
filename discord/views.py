@@ -126,12 +126,12 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
             return TournamentPlayerSerializerWithBadges
         return TournamentPlayerSerializer
 
-    @action(detail=False, permission_classes=[IsAdminUser], methods=["POST"])
+    @action(detail=False, permission_classes=[PreSharedKeyAuthentication | IsAdminUser], methods=["POST"])
     def update_all_users(self, request):
         tasks.update_users.delay()
         return Response({"message": "Scheduled all users to be updated"})
 
-    @action(detail=True, permission_classes=[IsAdminUser], methods=["POST"])
+    @action(detail=True, permission_classes=[PreSharedKeyAuthentication | IsAdminUser], methods=["POST"])
     def update_user(self, request, **kwargs):
         tournament_player = self.get_object()
         tasks.update_user.delay(tournament_player.osu_user_id)

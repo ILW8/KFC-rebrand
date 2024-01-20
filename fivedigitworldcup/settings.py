@@ -56,14 +56,17 @@ _allowed_ports: list[int] = list(map(int, os.environ.get("ALLOWED_PORTS", "443")
 
 ALLOWED_HOSTS = _allowed_hosts + ['.localhost', '127.0.0.1', '[::1]']
 
+_default_ports = [80, 443]  # ugly hack........... i dont even anymore
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [f"{scheme}://{hostname}:{port}"
+CORS_ALLOWED_ORIGINS = [(f"{scheme}://{hostname}"
+                         f"{':' if port not in _default_ports else ''}"
+                         f"{port if port not in _default_ports else ''}")
                         for scheme in _allowed_schemes
-                        for hostname in _allowed_hosts
+                        for hostname in ALLOWED_HOSTS
                         for port in _allowed_ports]
 CSRF_TRUSTED_ORIGINS = [f"{scheme}://*.{hostname}:{port}"
                         for scheme in _allowed_schemes
-                        for hostname in _allowed_hosts
+                        for hostname in ALLOWED_HOSTS
                         for port in _allowed_ports]
 CSRF_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
 SESSION_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
