@@ -169,7 +169,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                                            "osu_username": tourney_player.osu_username,
                                            "osu_global_rank": tourney_player.osu_rank_std,
                                            "osu_global_rank_bws": tourney_player.osu_rank_std_bws,
-                                           "flag": tourney_player.osu_flag,
+                                           "osu_flag": tourney_player.osu_flag,
                                            "is_organizer": tourney_player.is_organizer,
                                            "action": "register"})
                 })
