@@ -225,9 +225,9 @@ OSU_REDIRECT_URI_SUFFIX = "/auth/osu/code"
 TEAM_ROSTER_SIZE_MIN = int(os.environ.get("TEAM_ROSTER_SIZE_MIN", 6))  # fatal if not parseable
 TEAM_ROSTER_SIZE_MAX = int(os.environ.get("TEAM_ROSTER_SIZE_MAX", 8))
 TEAM_ROSTER_BACKUP_SIZE_MAX = int(os.environ.get("TEAM_ROSTER_BACKUP_SIZE_MAX", 3))
-TEAM_ROSTER_REGISTRATION_START = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_START")),
+TEAM_ROSTER_REGISTRATION_START = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_START", 1705946400)),
                                                                  tz=datetime.timezone.utc)
-TEAM_ROSTER_REGISTRATION_END = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_END")),
+TEAM_ROSTER_REGISTRATION_END = datetime.datetime.fromtimestamp(int(os.environ.get("REGISTRATION_END", 1707696000)),
                                                                tz=datetime.timezone.utc)
 
 # CELERY_BACKEND_URL = 'redis://localhost:6379/0'  # not needed now... may need to re-enable it for chains/groups
