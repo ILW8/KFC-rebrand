@@ -207,6 +207,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny'
     ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [  # default includes session and basic auth. we don't want basic auth.
+        'rest_framework.authentication.SessionAuthentication',
+    ],
     'DEFAULT_PAGINATION_CLASS': 'fivedigitworldcup.pagination.PageNumberWithLimitPagination',
     'PAGE_SIZE': 50
 }
