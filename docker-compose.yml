@@ -10,6 +10,7 @@ services:
       - "traefik.enable=false"
 
   celery_worker:
+    restart: on-failure
     build:
       context: .
       target: celery_worker
@@ -17,6 +18,7 @@ services:
       - ./.env:/app/.env
 
   nginxstatic:
+    restart: on-failure
     build:
       context: .
       target: statics_server
@@ -25,12 +27,13 @@ services:
     labels:
       - "traefik.http.routers.nginxstatic.entryPoints=websecure"
       - "traefik.http.routers.nginxstatic.tls"
-      - "traefik.http.routers.nginxstatic.rule=Host(`api.stagec.xyz`)&&PathPrefix(`/static`)"
+      - "traefik.http.routers.nginxstatic.rule=Host(`api.stagec.xyz`)&&!PathPrefix(`/admin`)&&PathPrefix(`/static`)"
       - "traefik.http.routers.nginxstatic.middlewares=nginx-strip-static@docker"
       - "traefik.http.middlewares.nginx-strip-static.stripprefix.prefixes=/static"
       - "traefik.http.middlewares.nginx-strip-static.stripprefix.forceSlash=true"
 
   gunicorn:
+    restart: on-failure
     build:
       context: .
       target: backend
@@ -50,6 +53,7 @@ services:
 
   traefik:
     image: traefik:v2.10
+    restart: on-failure
     command:
      - "--api=true"
      - "--accesslog=true"
