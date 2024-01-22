@@ -140,6 +140,8 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                 tourney_player = TournamentPlayer(user=user,
                                                   discord_user_id=discord_data['id'],
                                                   discord_username=discord_data['composite_username'],
+                                                  discord_global_name=discord_data.get('global_name', None),
+                                                  discord_avatar=discord_data.get('avatar', None),
                                                   osu_user_id=osu_data['id'],
                                                   osu_username=osu_data['username'],
                                                   osu_flag=osu_data['country_code'],

@@ -10,8 +10,8 @@ class TournamentPlayer(models.Model):
 
     discord_user_id = models.CharField(max_length=20, blank=True)
     discord_username = models.CharField(max_length=64)
-    discord_global_name = models.CharField(max_length=64)
-    discord_avatar = models.CharField(max_length=64)
+    discord_global_name = models.CharField(max_length=64, null=True, blank=True)
+    discord_avatar = models.CharField(max_length=64, null=True, blank=True)
 
     osu_user_id = models.BigIntegerField(blank=True)
     osu_username = models.CharField(max_length=64)
@@ -30,7 +30,8 @@ class TournamentPlayer(models.Model):
     in_backup_roster = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.osu_username} ({self.osu_flag}|{self.discord_global_name})"
+        return (f"{self.osu_username} ({self.osu_flag}|"
+                f"{self.discord_global_name if self.discord_global_name is not None else self.discord_username})")
 
     class Meta:
         ordering = ['pk']
