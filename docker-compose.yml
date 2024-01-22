@@ -3,19 +3,34 @@ version: '3.10'
 services:
   redis:
     image: redis
+    depends_on:
+      - fluentd
     ports:
       - "6379:6379"
     restart: on-failure
     labels:
       - "traefik.enable=false"
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: redis
 
   celery_worker:
     restart: on-failure
+    depends_on:
+      - redis
+      - fluentd
     build:
       context: .
       target: celery_worker
     volumes:
       - ./.env:/app/.env
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: celery
 
   nginxstatic:
     restart: on-failure
@@ -37,6 +52,9 @@ services:
     build:
       context: .
       target: backend
+    depends_on:
+      - redis
+      - fluentd
     expose:
       - "80"
     labels:
@@ -50,17 +68,23 @@ services:
       - "traefik.http.routers.gunicorn-django-admin.tls="
     volumes:
       - ./.env:/app/.env
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: gunicorn
 
   traefik:
     image: traefik:v2.10
     restart: on-failure
+    depends_on:
+      - fluentd
     command:
      - "--api=true"
      - "--accesslog=true"
      - "--providers.docker"
      - "--entryPoints.websecure.address=:443"
      - "--entryPoints.traefik-api.address=:2082"
-     - "--providers.file.directory=/etc/traefik/dynamic.yml"
     ports:
       - "443:443"
       - "2082:2082"
@@ -75,3 +99,66 @@ services:
 #      - "traefik.http.routers.api.tls="
       - "traefik.http.routers.api.middlewares=auth"
       - "traefik.http.middlewares.auth.basicauth.users=5wc-admin:$$apr1$$8oeds52v$$hQK3dfyNECLy/FfMq5Sxv1"
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: traefik
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.1
+    container_name: elasticsearch
+    environment:
+      - "discovery.type=single-node"
+    expose:
+      - "9200"
+    ports:
+      - "9200:9200"
+    labels:
+      - "traefik.enable=false"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.1
+    volumes:
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml
+    links:
+      - "elasticsearch"
+    ports:
+      - "5601"
+    labels:
+      - "traefik.http.routers.kibana.entryPoints=websecure"
+      - "traefik.http.routers.kibana.rule=Host(`kibana.stagec.xyz`)"
+      - "traefik.http.routers.kibana.middlewares=auth"
+      - "traefik.http.routers.kibana.tls="
+
+  fluentd:
+    build:
+      context: .
+      target: fluentd_es
+    links:
+      - "elasticsearch"
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./fluentd.conf:/fluentd/etc/fluent.conf
+      - fluentd_buffer_logs:/fluentd/buffer_logs
+    labels:
+      - "traefik.enable=false"
+    depends_on:
+      change-vol-ownership:
+        # Wait for the ownership to change
+        condition: service_completed_successfully
+
+  change-vol-ownership:
+    # We can use any image we want as long as we can chown
+    image: ubuntu
+    # Need a user priviliged enough to chown
+    user: "root"
+    volumes:
+      # The volume to chown
+      - fluentd_buffer_logs:/fluentd/buffer_logs
+    command: chmod 777 /fluentd/buffer_logs
+
+volumes:
+  fluentd_buffer_logs:

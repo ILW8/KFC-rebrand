@@ -33,3 +33,8 @@ COPY nginx.conf /etc/nginx/
 COPY --from=backend /app/static /static
 
 CMD ["nginx", "-g", "daemon off;"]
+
+FROM fluentd:v1.16-1 AS fluentd_es
+USER root
+RUN ["gem", "install", "fluent-plugin-elasticsearch", "fluent-plugin-s3", "--no-document"]
+USER fluent

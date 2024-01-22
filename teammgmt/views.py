@@ -105,7 +105,9 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
                 delta_seconds = request_time - settings.TEAM_ROSTER_REGISTRATION_START
                 delta_seconds = delta_seconds - datetime.timedelta(microseconds=delta_seconds.microseconds)
                 return Response(
-                    {"error": f"Registration closed {delta_seconds} ago ({delta_seconds.total_seconds():.0f} seconds)."},
+                    {
+                        "error": f"Registration closed {delta_seconds} ago "
+                                 f"({delta_seconds.total_seconds():.0f} seconds)."},
                     status=status.HTTP_403_FORBIDDEN
                 )
 
@@ -120,13 +122,18 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
             # TODO: only allow reserve players if main roster meets minimum roster size
             if not all([len(players) <= settings.TEAM_ROSTER_SIZE_MAX,
                         len(backups) <= settings.TEAM_ROSTER_BACKUP_SIZE_MAX]):
-                return Response({"error": f"roster and backup player count out of bounds; "
-                                          f"request roster size: {len(players)}, "
-                                          f"request backups size: {len(backups)}, "
-                                          f"minimum roster size: {settings.TEAM_ROSTER_SIZE_MIN}, "
-                                          f"maximum roster size: {settings.TEAM_ROSTER_SIZE_MAX}, "
-                                          f"maximum backup players: {settings.TEAM_ROSTER_BACKUP_SIZE_MAX}"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": f"roster and backup player count out of bounds; "
+                              f"request roster size: {len(players)}, "
+                              f"request backups size: {len(backups)}, "
+                              f"minimum roster size: {settings.TEAM_ROSTER_SIZE_MIN}, "
+                              f"maximum roster size: {settings.TEAM_ROSTER_SIZE_MAX}, "
+                              f"maximum backup players: {settings.TEAM_ROSTER_BACKUP_SIZE_MAX}",
+                     "roster_min": settings.TEAM_ROSTER_SIZE_MIN,
+                     "roster_max": settings.TEAM_ROSTER_SIZE_MAX,
+                     "backup_max": settings.TEAM_ROSTER_BACKUP_SIZE_MAX
+                     },
+                    status=status.HTTP_400_BAD_REQUEST)
 
             try:
                 req_players_qs = TournamentPlayer.objects.filter(pk__in=players)
