@@ -6,13 +6,17 @@ from typing import Iterable
 from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
+from django.db import transaction
 
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer, TournamentPlayerBadge
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import logging
 
+
+logger = logging.getLogger(__name__)
 FILTER_PHRASES = {"contrib", "nomination", "assessment", "moderation", "spotlight", "mapper", "mapping", "aspire",
                   "monthly", "exemplary", "outstanding", "longstanding", "idol", "pending", "gmt", "global moderators",
                   "trivium", "pickem", "fanart", "fan art", "skinning", "labour of love", "community choice",
@@ -90,8 +94,10 @@ class DiscordAndOsuAuthBackend(BaseBackend):
     def authenticate(self, request, discord_user_data=None, osu_user_data=None):
         discord_data, osu_data = self.validate_data(discord_user_data, osu_user_data)
         if discord_data is None or osu_data is None:
+            logger.info("discord or osu session data failed to validate")
             return None
 
+        logger.info(f"attempting auth with discord user id {discord_data['id']}, osu user id {osu_data['id']}")
         username = f"{discord_data['id']}.{osu_data['id']}"
         try:
             # check both user and TournamentPlayer exist
@@ -100,6 +106,8 @@ class DiscordAndOsuAuthBackend(BaseBackend):
             try:
                 # found existing TournamentPlayer with different discord id
                 tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(osu_user_id=osu_data['id'])[0]
+                logger.info(f"found user {tournament_player} with  discord id {tournament_player.discord_user_id}. "
+                            f"Updating discord id to {discord_data['id']}")
                 old_discord_id = tournament_player.discord_user_id
 
                 tournament_player.discord_user_id = discord_data['id']
@@ -121,6 +129,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                             })
                         })
                 finally:
+                    logger.info(f"successfully authenticated user {tournament_player}")
                     return tournament_player.user
             except IndexError:
                 pass
@@ -132,47 +141,52 @@ class DiscordAndOsuAuthBackend(BaseBackend):
 
         try:
             TournamentPlayer.objects.get(discord_user_id=discord_data['id'], osu_user_id=osu_data['id'])
+            logger.info(f"found existing TournamentPlayer {user.tournamentplayer}")
         except TournamentPlayer.DoesNotExist:
+            with transaction.atomic():
+                # create tournament player
+                logger.info(f"no TournamentPlayer found, creating for {user}")
+                tournament_team, _ = TournamentTeam.objects.get_or_create(osu_flag=osu_data['country_code'])
+                tourney_player = TournamentPlayer(user=user,
+                                                  discord_user_id=discord_data['id'],
+                                                  discord_username=discord_data['composite_username'],
+                                                  discord_global_name=discord_data.get('global_name', None),
+                                                  discord_avatar=discord_data.get('avatar', None),
+                                                  osu_user_id=osu_data['id'],
+                                                  osu_username=osu_data['username'],
+                                                  osu_flag=osu_data['country_code'],
+                                                  team=tournament_team,
+                                                  # global_rank can be null, but I'm not sure if global_rank is
+                                                  # always present
+                                                  osu_rank_std=osu_data['statistics'].get('global_rank', None),
+                                                  osu_stats_updated=datetime.datetime.now(datetime.timezone.utc))
 
-            # create tournament player
-            tournament_team, _ = TournamentTeam.objects.get_or_create(osu_flag=osu_data['country_code'])
-            tourney_player = TournamentPlayer(user=user,
-                                              discord_user_id=discord_data['id'],
-                                              discord_username=discord_data['composite_username'],
-                                              osu_user_id=osu_data['id'],
-                                              osu_username=osu_data['username'],
-                                              osu_flag=osu_data['country_code'],
-                                              team=tournament_team,
-                                              # global_rank can be null, but I'm not sure if global_rank is
-                                              # always present
-                                              osu_rank_std=osu_data['statistics'].get('global_rank', None),
-                                              osu_stats_updated=datetime.datetime.now(datetime.timezone.utc))
+                # save user badges
+                all_badges, db_badges = prep_badges_for_db(osu_data, tourney_player)
 
-            # save user badges
-            all_badges, db_badges = prep_badges_for_db(osu_data, tourney_player)
+                TournamentPlayerBadge.objects.bulk_create(db_badges)
 
-            TournamentPlayerBadge.objects.bulk_create(db_badges)
+                # filter again to filter by cutoff date, calculate BWS
+                tourney_player.osu_rank_std_bws = bws(len(filter_badges(all_badges)),
+                                                      tourney_player.osu_rank_std)
+                tourney_player.save()
 
-            # filter again to filter by cutoff date, calculate BWS
-            tourney_player.osu_rank_std_bws = bws(len(filter_badges(all_badges)),
-                                                  tourney_player.osu_rank_std)
-            tourney_player.save()
-
-            channel_layer = get_channel_layer()
-            # noinspection PyArgumentList
-            async_to_sync(channel_layer.group_send)(
-                settings.CHANNELS_DISCORD_WS_GROUP_NAME,
-                {
-                    "type": "registration.new",
-                    "message": json.dumps({"discord_user_id": tourney_player.discord_user_id,
-                                           "osu_user_id": tourney_player.osu_user_id,
-                                           "osu_username": tourney_player.osu_username,
-                                           "osu_global_rank": tourney_player.osu_rank_std,
-                                           "osu_global_rank_bws": tourney_player.osu_rank_std_bws,
-                                           "osu_flag": tourney_player.osu_flag,
-                                           "is_organizer": tourney_player.is_organizer,
-                                           "action": "register"})
-                })
+                channel_layer = get_channel_layer()
+                # noinspection PyArgumentList
+                async_to_sync(channel_layer.group_send)(
+                    settings.CHANNELS_DISCORD_WS_GROUP_NAME,
+                    {
+                        "type": "registration.new",
+                        "message": json.dumps({"discord_user_id": tourney_player.discord_user_id,
+                                               "osu_user_id": tourney_player.osu_user_id,
+                                               "osu_username": tourney_player.osu_username,
+                                               "osu_global_rank": tourney_player.osu_rank_std,
+                                               "osu_global_rank_bws": tourney_player.osu_rank_std_bws,
+                                               "osu_flag": tourney_player.osu_flag,
+                                               "is_organizer": tourney_player.is_organizer,
+                                               "action": "register"})
+                    })
+        logger.info(f"successfully authenticated user {user.tournamentplayer}")
         return user
 
     def get_user(self, user_id):

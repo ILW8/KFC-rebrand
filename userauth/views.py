@@ -137,7 +137,7 @@ class OsuAuth(viewsets.ViewSet, OauthWithRedirect):
 
         auth_data = r.json()
         # fetch user information
-        r = requests.get(f"{settings.OSU_API_ENDPOINT}/me",
+        r = requests.get(f"{settings.OSU_API_ENDPOINT}/me/osu",
                          headers={"Authorization": f"Bearer {auth_data.get('access_token')}"})
         if r.status_code != 200:
             return Response(r.json(), status=r.status_code)

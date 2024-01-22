@@ -12,7 +12,7 @@ RUN pip install -U pip
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && pip install uvicorn[standard]
 COPY . /app
 
 RUN python3 manage.py collectstatic --no-input
@@ -33,3 +33,8 @@ COPY nginx.conf /etc/nginx/
 COPY --from=backend /app/static /static
 
 CMD ["nginx", "-g", "daemon off;"]
+
+FROM fluentd:v1.16-1 AS fluentd_es
+USER root
+RUN ["gem", "install", "fluent-plugin-elasticsearch", "fluent-plugin-s3", "--no-document"]
+USER fluent

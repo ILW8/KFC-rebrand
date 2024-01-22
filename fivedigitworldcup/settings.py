@@ -46,13 +46,11 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", 'django-insecure-u0r#lj965$_#(q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = strtobool(os.environ.get("DJANGO_DEBUG", "false"))
 
-
 _allowed_schemes: list = os.environ.get("ALLOWED_SCHEMES", "https").split(",")
 _frontend_domain: str = os.environ.get("FRONTEND_DOMAIN", "vps.5wc.stagec.xyz")
 _parsed_frontend_domain = tldextract.extract(_frontend_domain)
 _allowed_hosts: list = os.environ.get("ALLOWED_HOSTS", _frontend_domain).split(",")
 _allowed_ports: list[int] = list(map(int, os.environ.get("ALLOWED_PORTS", "443").split(",")))
-
 
 ALLOWED_HOSTS = _allowed_hosts + ['.localhost', '127.0.0.1', '[::1]']
 
@@ -64,16 +62,21 @@ CORS_ALLOWED_ORIGINS = [(f"{scheme}://{hostname}"
                         for scheme in _allowed_schemes
                         for hostname in ALLOWED_HOSTS
                         for port in _allowed_ports]
-CSRF_TRUSTED_ORIGINS = [f"{scheme}://*.{hostname}:{port}"
-                        for scheme in _allowed_schemes
-                        for hostname in ALLOWED_HOSTS
-                        for port in _allowed_ports]
+CSRF_TRUSTED_ORIGINS = ([f"{scheme}://*.{hostname}:{port}"
+                         for scheme in _allowed_schemes
+                         for hostname in ALLOWED_HOSTS
+                         for port in _allowed_ports] +
+                        [(f"{scheme}://{hostname}"
+                          f"{':' if port not in _default_ports else ''}"
+                          f"{port if port not in _default_ports else ''}")
+                         for scheme in _allowed_schemes
+                         for hostname in ALLOWED_HOSTS
+                         for port in _allowed_ports])
 CSRF_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
 SESSION_COOKIE_DOMAIN = f".{_parsed_frontend_domain.registered_domain}"
 
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
 
 # Application definition
 
@@ -149,6 +152,20 @@ DATABASES = {
     }
 }
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
 ASGI_APPLICATION = 'fivedigitworldcup.asgi.application'
 CHANNEL_LAYERS = {
     "default": {
@@ -213,7 +230,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'fivedigitworldcup.pagination.PageNumberWithLimitPagination',
     'PAGE_SIZE': 50
 }
-
 
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", None)
