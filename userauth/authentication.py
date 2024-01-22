@@ -97,6 +97,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
             logger.info("discord or osu session data failed to validate")
             return None
 
+        logger.info(f"attempting auth with discord user id {discord_data['id']}, osu user id {osu_data['id']}")
         username = f"{discord_data['id']}.{osu_data['id']}"
         try:
             # check both user and TournamentPlayer exist
