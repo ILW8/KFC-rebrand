@@ -117,8 +117,8 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
             backups = request.data['backups']
 
             # check roster size
-            if not all([len(players) >= settings.TEAM_ROSTER_SIZE_MIN,
-                        len(players) <= settings.TEAM_ROSTER_SIZE_MAX,
+            # TODO: only allow reserve players if main roster meets minimum roster size
+            if not all([len(players) <= settings.TEAM_ROSTER_SIZE_MAX,
                         len(backups) <= settings.TEAM_ROSTER_BACKUP_SIZE_MAX]):
                 return Response({"error": f"roster and backup player count out of bounds; "
                                           f"request roster size: {len(players)}, "
@@ -146,8 +146,12 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
 
             try:
                 with transaction.atomic():
-                    to_remove_from_roster.update(in_roster=False)
-                    to_remove_from_backup.update(in_backup_roster=False)
+                    for player_to_remove_from_roster in to_remove_from_roster:
+                        player_to_remove_from_roster.in_roster = False
+                        player_to_remove_from_roster.save()
+                    for player_to_remove_from_backup in to_remove_from_backup:
+                        player_to_remove_from_backup.in_backup_roster = False
+                        player_to_remove_from_backup.save()
                     req_players_qs.update(in_roster=True)
                     req_backups_qs.update(in_backup_roster=True)
             except IntegrityError as e:
