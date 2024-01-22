@@ -13,7 +13,10 @@ from userauth.models import TournamentPlayer, TournamentPlayerBadge
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import logging
 
+
+logger = logging.getLogger(__name__)
 FILTER_PHRASES = {"contrib", "nomination", "assessment", "moderation", "spotlight", "mapper", "mapping", "aspire",
                   "monthly", "exemplary", "outstanding", "longstanding", "idol", "pending", "gmt", "global moderators",
                   "trivium", "pickem", "fanart", "fan art", "skinning", "labour of love", "community choice",
@@ -91,6 +94,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
     def authenticate(self, request, discord_user_data=None, osu_user_data=None):
         discord_data, osu_data = self.validate_data(discord_user_data, osu_user_data)
         if discord_data is None or osu_data is None:
+            logger.info("discord or osu session data failed to validate")
             return None
 
         username = f"{discord_data['id']}.{osu_data['id']}"
@@ -101,6 +105,8 @@ class DiscordAndOsuAuthBackend(BaseBackend):
             try:
                 # found existing TournamentPlayer with different discord id
                 tournament_player: TournamentPlayer = TournamentPlayer.objects.filter(osu_user_id=osu_data['id'])[0]
+                logger.info(f"found user {tournament_player} with  discord id {tournament_player.discord_user_id}. "
+                            f"Updating discord id to {discord_data['id']}")
                 old_discord_id = tournament_player.discord_user_id
 
                 tournament_player.discord_user_id = discord_data['id']
@@ -122,6 +128,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                             })
                         })
                 finally:
+                    logger.info(f"successfully authenticated user {tournament_player}")
                     return tournament_player.user
             except IndexError:
                 pass
@@ -133,9 +140,11 @@ class DiscordAndOsuAuthBackend(BaseBackend):
 
         try:
             TournamentPlayer.objects.get(discord_user_id=discord_data['id'], osu_user_id=osu_data['id'])
+            logger.info(f"found existing TournamentPlayer {user.tournamentplayer}")
         except TournamentPlayer.DoesNotExist:
             with transaction.atomic():
                 # create tournament player
+                logger.info(f"no TournamentPlayer found, creating for {user}")
                 tournament_team, _ = TournamentTeam.objects.get_or_create(osu_flag=osu_data['country_code'])
                 tourney_player = TournamentPlayer(user=user,
                                                   discord_user_id=discord_data['id'],
@@ -176,6 +185,7 @@ class DiscordAndOsuAuthBackend(BaseBackend):
                                                "is_organizer": tourney_player.is_organizer,
                                                "action": "register"})
                     })
+        logger.info(f"successfully authenticated user {user.tournamentplayer}")
         return user
 
     def get_user(self, user_id):
