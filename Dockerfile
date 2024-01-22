@@ -12,7 +12,7 @@ RUN pip install -U pip
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt && pip install -r uvicorn[standard]
+RUN pip install -r requirements.txt && pip install uvicorn[standard]
 COPY . /app
 
 RUN python3 manage.py collectstatic --no-input
