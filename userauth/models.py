@@ -51,3 +51,8 @@ class TournamentPlayerBadge(models.Model):
     url = models.TextField(blank=True)
     image_url = models.TextField()
     image_url_2x = models.TextField()
+    
+    class Meta:
+        indexes = (
+            models.Index(fields=('user',)),
+        )
