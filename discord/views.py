@@ -2,6 +2,7 @@ import datetime
 
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
+from django.core.cache import cache
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, permissions, serializers, status, viewsets
@@ -128,15 +129,21 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, permission_classes=[PreSharedKeyAuthentication | IsAdminUser], methods=["POST"])
     def update_all_users(self, request):
+        queue_len = cache.get("osu_queue_length", 0)
+        if queue_len > 0:
+            return Response({"message": f"update tasks queue is not empty, {queue_len} tasks remaining"},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
         tasks.update_users.delay()
         return Response({"message": "Scheduled all users to be updated"})
 
     @action(detail=True, permission_classes=[PreSharedKeyAuthentication | IsAdminUser], methods=["POST"])
     def update_user(self, request, **kwargs):
+        queue_len = cache.get("osu_queue_length", 0)
+
         tournament_player = self.get_object()
         tasks.update_user.delay(tournament_player.osu_user_id)
         return Response({"message": f"Scheduled {tournament_player.osu_username} ({tournament_player.osu_user_id}) "
-                                    f"for update"})
+                                    f"for update. {queue_len + 1} tasks in queue"})
 
     def retrieve(self, request, *args, **kwargs):
         try:

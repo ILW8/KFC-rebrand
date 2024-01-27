@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 from celery import shared_task
 from django.db import transaction
@@ -10,9 +11,13 @@ from django.conf import settings
 import requests
 
 
+logger = logging.getLogger(__name__)
+
+
 def get_osu_token() -> str | None:
     token_dict = cache.get("osu_token", None)
     if token_dict is None:
+        logger.warning("fetching new osu! token")
         r = requests.post("https://osu.ppy.sh/oauth/token", {
             "client_id": settings.OSU_CLIENT_ID,
             "client_secret": settings.OSU_CLIENT_SECRET,
@@ -32,11 +37,11 @@ def get_osu_token() -> str | None:
 
 @shared_task(rate_limit="2/s")  # RATE LIMIT IS PER WORKER -- ONLY RUN ONE WORKER
 def update_user(user_id: int):
-    print(f"[update_user] looking up user with osu id {user_id}...")
+    logger.info(f"[update_user] looking up user with osu id {user_id}...")
     try:
         tourney_player = TournamentPlayer.objects.get(osu_user_id=user_id)
     except TournamentPlayer.DoesNotExist:
-        print(f"[update_user] user with osu id {user_id} not found! Aborting.")
+        logger.info(f"[update_user] user with osu id {user_id} not found! Aborting.")
         return
 
     token = get_osu_token()
@@ -59,7 +64,12 @@ def update_user(user_id: int):
         TournamentPlayerBadge.objects.filter(user=tourney_player).delete()
         TournamentPlayerBadge.objects.bulk_create(db_badges)
         tourney_player.save()
-    print(f"[update_user] {user_id} updated!")
+    try:
+        cache.decr("osu_queue_length")
+        cache.touch("osu_queue_length", 60)
+    except ValueError:
+        pass
+    logger.info(f"[update_user] {user_id} updated!")
 
 
 @shared_task
@@ -70,8 +80,13 @@ def update_users(user_ids: list[int] | None = None):
     :param user_ids: list of user IDs to update. Defaults to None. If None, update all users in database.
     :return: None
     """
+
     if user_ids is None:
         all_users = TournamentPlayer.objects.all()
         user_ids = [user.osu_user_id for user in all_users]
     for user_id in user_ids:
+        cache.add("osu_queue_length", 0)  # only set if key not already present
+        cache.incr("osu_queue_length")
+        cache.touch("osu_queue_length", 60)
+        logger.debug(f"[update_users] queue now at: {cache.get('osu_queue_length')}")
         update_user.delay(user_id)
