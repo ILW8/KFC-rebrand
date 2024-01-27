@@ -24,6 +24,7 @@ class MockResponse:
 
 class FetchOsuUserStatsTestCase(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create()
         self.tourney_user = TournamentPlayer.objects.create(user=self.user,
                                                             osu_user_id=1,
@@ -42,6 +43,18 @@ class FetchOsuUserStatsTestCase(TestCase):
 
         self.assertEqual(200, res.status_code)
         self.assertEqual(1, mocked_tasks_update_users.call_count)
+
+    @patch('discord.tasks.update_users.delay')
+    def test_update_all_users_api_rate_limited(self, mocked_tasks_update_users):
+        cache.set("osu_queue_length", 100, timeout=1)
+        factory = APIRequestFactory()
+        request = factory.post(f'/registrants/update_users')
+        update_all_users_action = TournamentPlayerViewSet.as_view({'post': 'update_all_users'},
+                                                                  permission_classes=[])
+        res = update_all_users_action(request)
+
+        self.assertEqual(429, res.status_code)
+        self.assertEqual(0, mocked_tasks_update_users.call_count)
 
     @patch('discord.tasks.update_user.delay')
     def test_update_specific_user_api(self, mocked_tasks_update_user):
@@ -117,6 +130,7 @@ class FetchOsuUserStatsTestCase(TestCase):
     @patch("discord.tasks.update_user.delay")
     def test_update_all(self, mocked_update_user):
         tasks.update_users()
+        self.assertTrue(TournamentPlayer.objects.count() > 0)
         self.assertEqual(TournamentPlayer.objects.count(), mocked_update_user.call_count)
 
     @patch("discord.tasks.update_user.delay")
@@ -155,6 +169,26 @@ class FetchOsuUserStatsTestCase(TestCase):
             self.tourney_user.refresh_from_db()
             self.assertGreater(self.tourney_user.osu_stats_updated, year_2000)
             self.assertEqual(global_rank, self.tourney_user.osu_rank_std)
+
+    @patch("discord.tasks.get_osu_token")
+    def test_stats_update_queue_decr(self, mocked_get_osu_token):
+        """
+        Test that we decrement the "osu_queue_length" key in cache
+        :return:
+        """
+        mocked_get_osu_token.return_value = "TEST_VALID_TOKEN"
+        response = MockResponse({
+            "badges": [],
+            "statistics": {"global_rank": 1000}
+        },
+            200)
+
+        with patch('discord.tasks.requests.get', new=Mock(return_value=response)):
+            with patch('discord.tasks.cache.decr') as cache_decr:
+                with patch('discord.tasks.cache.touch') as cache_touch:
+                    tasks.update_user(self.tourney_user.osu_user_id)
+                    self.assertEqual(cache_decr.call_count, 1)
+                    self.assertEqual(cache_touch.call_count, 1)
 
 
 class ReturnBadgesOnDetailViewTestCase(TestCase):
