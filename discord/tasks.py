@@ -89,4 +89,4 @@ def update_users(user_ids: list[int] | None = None):
         cache.incr("osu_queue_length")
         cache.touch("osu_queue_length", 60)
         logger.debug(f"[update_users] queue now at: {cache.get('osu_queue_length')}")
-        update_user.delay(user_id, True)
+        update_user.delay(user_id)
