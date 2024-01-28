@@ -1,11 +1,11 @@
 import datetime
 
 from django.conf import settings
-from django.contrib.auth.models import AnonymousUser
 from django.db import transaction, IntegrityError
 
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -96,20 +96,14 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
             request_time = datetime.datetime.now(tz=datetime.timezone.utc)
             if request_time < settings.TEAM_ROSTER_REGISTRATION_START:
                 delta_seconds = (settings.TEAM_ROSTER_REGISTRATION_START - request_time)
-                delta_seconds = delta_seconds - datetime.timedelta(microseconds=delta_seconds.microseconds)  # del usec
-                return Response(
-                    {"error": f"Registration opens in {delta_seconds} ({delta_seconds.total_seconds():.0f} seconds)."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            if request_time > settings.TEAM_ROSTER_REGISTRATION_END:
-                delta_seconds = request_time - settings.TEAM_ROSTER_REGISTRATION_START
-                delta_seconds = delta_seconds - datetime.timedelta(microseconds=delta_seconds.microseconds)
-                return Response(
-                    {
-                        "error": f"Registration closed {delta_seconds} ago "
-                                 f"({delta_seconds.total_seconds():.0f} seconds)."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+                delta_seconds = delta_seconds - datetime.timedelta(microseconds=delta_seconds.microseconds)  # rm usec
+                raise PermissionDenied(f"Registration opens in {delta_seconds} "
+                                       f"({delta_seconds.total_seconds():.0f} seconds).")
+            if request_time > settings.TEAM_ROSTER_SELECTION_END:
+                time_delta = request_time - settings.TEAM_ROSTER_REGISTRATION_START
+                time_delta = time_delta - datetime.timedelta(microseconds=time_delta.microseconds)
+                raise PermissionDenied(f"Roster selection closed {time_delta} ago "
+                                       f"({time_delta.total_seconds():.0f} seconds).")
 
             if not ((required_fields := {'players', 'backups'}) <= (keys_provided := request.data.keys())):
                 return Response({"error": f"required field(s) "

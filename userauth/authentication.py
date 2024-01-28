@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
 from django.db import transaction
+from rest_framework.exceptions import PermissionDenied
 
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer, TournamentPlayerBadge
@@ -143,6 +144,12 @@ class DiscordAndOsuAuthBackend(BaseBackend):
             TournamentPlayer.objects.get(discord_user_id=discord_data['id'], osu_user_id=osu_data['id'])
             logger.info(f"found existing TournamentPlayer {user.tournamentplayer}")
         except TournamentPlayer.DoesNotExist:
+            request_time = datetime.datetime.now(tz=datetime.timezone.utc)
+            if request_time > settings.USER_REGISTRATION_END:
+                time_delta = (request_time - settings.USER_REGISTRATION_END)
+                time_delta = time_delta - datetime.timedelta(microseconds=time_delta.microseconds)
+                raise PermissionDenied(f"User registrations closed {time_delta} ago "
+                                       f"({time_delta.total_seconds():.0f} seconds).")
             with transaction.atomic():
                 # create tournament player
                 logger.info(f"no TournamentPlayer found, creating for {user}")
