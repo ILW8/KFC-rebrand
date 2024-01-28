@@ -5,7 +5,8 @@ from userauth.authentication import filter_badges, bws, DiscordAndOsuAuthBackend
 from rest_framework.test import APIRequestFactory
 from django.contrib.auth import authenticate
 
-from userauth.views import DiscordAuth, OsuAuth
+from userauth.models import DisqualifiedUser
+from userauth.views import DiscordAuth, OsuAuth, SessionDetails
 
 
 class NoOpAuthEndpointsTestCase(TestCase):
@@ -36,6 +37,42 @@ class DiscordAndOsuLoginTestCase(TestCase):
                             discord_user_data=discord_user_data,
                             osu_user_data=osu_user_data)
         self.assertIsNone(user)
+
+    # this is so dumb
+    def test_dq_model_stringify(self):
+        dq_user = DisqualifiedUser.objects.create(osu_user_id=1234727)
+        self.assertEqual(f"https://osu.ppy.sh/users/{dq_user.osu_user_id}", str(dq_user))
+
+    def test_login_disqualified_user(self):
+        factory = APIRequestFactory()
+        req = factory.get('/auth/session/login/')
+
+        dq_user_id = 1234727
+        DisqualifiedUser.objects.get_or_create(osu_user_id=dq_user_id)
+        req.session = {"osu_user_data": {"id": dq_user_id}, "discord_user_data": {}}
+        session_login_view = SessionDetails.as_view({'get': 'login'})
+        response = session_login_view(req)
+        self.assertEqual(403, response.status_code)
+        self.assertEqual("user disqualified", response.data["error"])
+
+    def test_login_not_disqualified_user(self):
+        factory = APIRequestFactory()
+        req = factory.get('/auth/session/login/')
+
+        dq_user_id = 1234727
+        req.session = {"osu_user_data": {"id": dq_user_id}, "discord_user_data": {}}
+        session_login_view = SessionDetails.as_view({'get': 'login'})
+        response = session_login_view(req)
+        self.assertNotEqual("user disqualified", response.data["error"])
+
+    def test_login_no_session(self):
+        factory = APIRequestFactory()
+        req = factory.get('/auth/session/login/')
+        req.session = {}
+        session_login_view = SessionDetails.as_view({'get': 'login'})
+        response = session_login_view(req)
+        self.assertEqual(401, response.status_code)
+        self.assertEqual("required discord or osu! session missing", response.data["msg"])
 
     @parameterized.expand([
         ({'id': "874598213518214312", 'username': 'jame', 'discriminator': '0443'}, 'jame#0443'),

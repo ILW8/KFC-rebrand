@@ -56,3 +56,10 @@ class TournamentPlayerBadge(models.Model):
         indexes = (
             models.Index(fields=('user',)),
         )
+
+
+class DisqualifiedUser(models.Model):
+    osu_user_id = models.IntegerField(primary_key=True, unique=True)
+
+    def __str__(self):
+        return f"https://osu.ppy.sh/users/{self.osu_user_id}"

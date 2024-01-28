@@ -14,6 +14,8 @@ from rest_framework.decorators import action
 from django.contrib.auth import authenticate, login, logout
 import django.dispatch
 
+from userauth.models import DisqualifiedUser
+
 login_signal = django.dispatch.Signal()
 
 
@@ -49,12 +51,20 @@ class SessionDetails(viewsets.ViewSet):
 
     @action(methods=['get', 'post'], detail=False)
     def login(self, request):
-        if request.session.get("discord_user_data") is None or request.session.get("osu_user_data") is None:
+        osu_user_data = request.session.get("osu_user_data")
+
+        if request.session.get("discord_user_data") is None or osu_user_data is None:
             return Response({"error": "failed to authenticate", "msg": "required discord or osu! session missing"},
                             status=status.HTTP_401_UNAUTHORIZED)
+        is_user_disqualified = DisqualifiedUser.objects.filter(osu_user_id=osu_user_data['id']).exists()
+        if is_user_disqualified:
+            return Response({"error": "user disqualified",
+                             "msg": f"osu user id {osu_user_data['id']} has been disqualified by an administrator"},
+                            status=status.HTTP_403_FORBIDDEN)
+
         user: User = authenticate(request,
                                   discord_user_data=request.session.get("discord_user_data"),
-                                  osu_user_data=request.session.get("osu_user_data"))
+                                  osu_user_data=osu_user_data)
         if user is not None:
             login(request, user)
             return Response({"ok": "logged in", "user": user.username})
@@ -77,7 +87,7 @@ class SessionDetails(viewsets.ViewSet):
                                                             "discord_user_id": user.tournamentplayer.discord_user_id,
                                                             "osu_user_id": user.tournamentplayer.osu_user_id,
                                                             "action": "delete"  # errr... this should really be done at
-                                                                                # the consumer.py side of things
+                                                            # the consumer.py side of things
                                                         })
                                                     })
         finally:
