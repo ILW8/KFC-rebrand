@@ -1,4 +1,6 @@
 import datetime
+
+from django.conf import settings
 from django.test import TestCase
 from parameterized import parameterized
 from userauth.authentication import filter_badges, bws, DiscordAndOsuAuthBackend
@@ -24,6 +26,10 @@ class NoOpAuthEndpointsTestCase(TestCase):
 
 
 class DiscordAndOsuLoginTestCase(TestCase):
+    def setUp(self):
+        settings.USER_REGISTRATION_END = (datetime.datetime.now(tz=datetime.timezone.utc) +
+                                          datetime.timedelta(days=2))
+
     @parameterized.expand([
         ({}, {}),
         (None, {}),

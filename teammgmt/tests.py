@@ -53,8 +53,25 @@ class TestRegistrationCutoffTestCase(TestCase):
         members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
         settings.TEAM_ROSTER_REGISTRATION_START = (datetime.datetime.now(tz=datetime.timezone.utc) -
                                                    datetime.timedelta(days=10))
-        settings.TEAM_ROSTER_REGISTRATION_END = (datetime.datetime.now(tz=datetime.timezone.utc) -
-                                                 datetime.timedelta(days=5))
+        settings.USER_REGISTRATION_END = (datetime.datetime.now(tz=datetime.timezone.utc) -
+                                          datetime.timedelta(days=5))
+        settings.TEAM_ROSTER_SELECTION_END = (datetime.datetime.now(tz=datetime.timezone.utc) -
+                                              datetime.timedelta(days=2))
 
         res = members_view(request, pk=self.tourney_team.pk)
-        self.assertContains(res, "Registration closed ", status_code=403)
+        self.assertContains(res, "Roster selection ", status_code=403)
+
+    def test_roster_after_regs_end(self):
+        factory = APIRequestFactory()
+        request = factory.patch(f'/registrants/update_users')
+        members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
+        settings.TEAM_ROSTER_REGISTRATION_START = (datetime.datetime.now(tz=datetime.timezone.utc) -
+                                                   datetime.timedelta(days=10))
+        settings.USER_REGISTRATION_END = (datetime.datetime.now(tz=datetime.timezone.utc) -
+                                          datetime.timedelta(days=1))
+        settings.TEAM_ROSTER_SELECTION_END = (datetime.datetime.now(tz=datetime.timezone.utc) +
+                                              datetime.timedelta(days=2))
+
+        res = members_view(request, pk=self.tourney_team.pk)
+        self.assertContains(res, "required field", status_code=400)
+        self.assertContains(res, "missing", status_code=400)
