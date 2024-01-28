@@ -3,6 +3,8 @@ import datetime
 from django.conf import settings
 from django.test import TestCase
 from parameterized import parameterized
+from rest_framework.exceptions import PermissionDenied
+
 from userauth.authentication import filter_badges, bws, DiscordAndOsuAuthBackend
 from rest_framework.test import APIRequestFactory
 from django.contrib.auth import authenticate
@@ -43,6 +45,26 @@ class DiscordAndOsuLoginTestCase(TestCase):
                             discord_user_data=discord_user_data,
                             osu_user_data=osu_user_data)
         self.assertIsNone(user)
+
+    def test_login_new_user_after_regs_close(self):
+        settings.USER_REGISTRATION_END = (datetime.datetime.now(tz=datetime.timezone.utc) -
+                                          datetime.timedelta(seconds=727))
+        valid_discord_data = {"id": "0", "username": "0", "discriminator": "0"}
+        valid_osu_data = {
+            'id': 2155578,
+            'username': 'Azer',
+            'country_code': 'CA',
+            'statistics': {"global_rank": 1292},
+            'badges': []
+        }
+
+        factory = APIRequestFactory()
+        req = factory.get('/auth/session/login/')
+        with self.assertRaises(PermissionDenied) as cm:
+            authenticate(req,
+                         discord_user_data=valid_discord_data,
+                         osu_user_data=valid_osu_data)
+        self.assertIn("User registrations closed", str(cm.exception))
 
     # this is so dumb
     def test_dq_model_stringify(self):
