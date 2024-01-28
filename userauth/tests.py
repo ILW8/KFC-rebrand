@@ -38,6 +38,11 @@ class DiscordAndOsuLoginTestCase(TestCase):
                             osu_user_data=osu_user_data)
         self.assertIsNone(user)
 
+    # this is so dumb
+    def test_dq_model_stringify(self):
+        dq_user = DisqualifiedUser.objects.create(osu_user_id=1234727)
+        self.assertEqual(f"https://osu.ppy.sh/users/{dq_user.osu_user_id}", str(dq_user))
+
     def test_login_disqualified_user(self):
         factory = APIRequestFactory()
         req = factory.get('/auth/session/login/')
