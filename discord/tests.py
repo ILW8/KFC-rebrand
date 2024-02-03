@@ -363,3 +363,57 @@ class ReturnBadgesOnDetailViewTestCase(TestCase):
         registrant_detail = TournamentPlayerViewSet.as_view({'get': 'list'})
         response = registrant_detail(request, pk=self.test_user.pk)
         self.assertTrue("badges" not in response.data)
+
+
+class RegistrantsListingTestCase(TestCase):
+    def test_get_registrant_not_found(self):
+        factory = APIRequestFactory()
+        pk = 917241725121
+        request = factory.get(f'/registrants/{pk}')
+        list_method = TournamentPlayerViewSet.as_view({'get': 'retrieve'}, permission_classes=[])
+
+        response = list_method(request, pk=pk)
+
+        self.assertEqual(404, response.status_code)
+
+
+class UpdateTournamentPlayerRolesTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create()
+        self.tourney_user = TournamentPlayer.objects.create(user=self.user,
+                                                            discord_user_id=481212233,
+                                                            osu_user_id=1,
+                                                            osu_stats_updated=datetime.datetime.fromtimestamp(
+                                                                0,
+                                                                tz=datetime.timezone.utc
+                                                            ))
+
+    @parameterized.expand([
+        ("true", True, ),
+        ("false", False, )
+    ])
+    def test_set_tourney_player_staff(self, _, new_staff_status):
+        factory = APIRequestFactory()
+        request = factory.patch(f'/registrants/{self.tourney_user.discord_user_id}/?key=discord',
+                                {'is_staff': new_staff_status},
+                                format='json')
+        set_tourney_user_staff = TournamentPlayerViewSet.as_view({'patch': 'partial_update'},
+                                                                  permission_classes=[])
+
+        res = set_tourney_user_staff(request, pk=self.tourney_user.discord_user_id)
+
+        self.assertEqual(200, res.status_code)
+        self.tourney_user.user.refresh_from_db()
+        self.assertEqual(new_staff_status, self.tourney_user.user.is_staff)
+
+    def test_set_tourney_player_staff_bad_type(self):
+        factory = APIRequestFactory()
+        request = factory.patch(f'/registrants/{self.tourney_user.discord_user_id}/?key=discord',
+                                {'is_staff': 'not a boolean'},
+                                format='json')
+        set_tourney_user_staff = TournamentPlayerViewSet.as_view({'patch': 'partial_update'},
+                                                                 permission_classes=[])
+
+        res = set_tourney_user_staff(request, pk=self.tourney_user.discord_user_id)
+
+        self.assertEqual(400, res.status_code)

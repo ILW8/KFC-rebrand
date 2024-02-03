@@ -8,11 +8,13 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, permissions, serializers, status, viewsets
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import action
-from rest_framework.permissions import BasePermission, IsAdminUser
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
 from discord import tasks
-from userauth.authentication import filter_badges
+from userauth.authentication import filter_badges, IsSuperUser
 from userauth.models import TournamentPlayer, TournamentPlayerBadge
 
 
@@ -118,8 +120,16 @@ class TournamentPlayerSerializerWithBadges(TournamentPlayerSerializer):
 
 
 class TournamentPlayerViewSet(viewsets.ModelViewSet):
-    queryset = TournamentPlayer.objects.all()
+    queryset = TournamentPlayer.objects.filter(user__is_staff=False)
+    queryset_include_staff = TournamentPlayer.objects.all()
     permission_classes = [PreSharedKeyAuthentication | ReadOnly]
+
+    def handle_exception(self, exc):
+        if isinstance(exc, Http404) and str(exc):
+            return Response({'detail': str(exc)},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        return super(TournamentPlayerViewSet, self).handle_exception(exc)
 
     def get_serializer_class(self):
         # noinspection PyTestUnpassedFixture
@@ -127,7 +137,7 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
             return TournamentPlayerSerializerWithBadges
         return TournamentPlayerSerializer
 
-    @action(detail=False, permission_classes=[PreSharedKeyAuthentication | IsAdminUser], methods=["POST"])
+    @action(detail=False, permission_classes=[PreSharedKeyAuthentication | IsSuperUser], methods=["POST"])
     def update_all_users(self, request):
         queue_len = cache.get("osu_queue_length", 0)
         if queue_len > 0:
@@ -136,7 +146,7 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
         tasks.update_users.delay()
         return Response({"message": "Scheduled all users to be updated"})
 
-    @action(detail=True, permission_classes=[PreSharedKeyAuthentication | IsAdminUser], methods=["POST"])
+    @action(detail=True, permission_classes=[PreSharedKeyAuthentication | IsSuperUser], methods=["POST"])
     def update_user(self, request, **kwargs):
         queue_len = cache.get("osu_queue_length", 0)
 
@@ -145,26 +155,41 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
         return Response({"message": f"Scheduled {tournament_player.osu_username} ({tournament_player.osu_user_id}) "
                                     f"for update. {queue_len + 1} tasks in queue"})
 
+    # todo: this should really go...
     def retrieve(self, request, *args, **kwargs):
         try:
             return super().retrieve(request, *args, **kwargs)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_object(self):
-        queryset = self.filter_queryset(self.get_queryset())
+    def get_queryset(self, include_staff=False):
+        if not include_staff:
+            return super().get_queryset()
+
+        # Ensure queryset is re-evaluated on each request.
+        queryset = self.queryset_include_staff.all()
+        return queryset
+
+    def get_object(self, include_staff=False):
+        queryset = self.filter_queryset(self.get_queryset(include_staff))
         # Lookup with pk
         lookup_type = self.request.query_params.get("key", None)
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
 
         try:
             if lookup_type is None or lookup_type in ('id', 'pk'):
-                return super().get_object()
+                filter_kwargs = {self.lookup_field: self.kwargs[lookup_url_kwarg]}
+                obj = get_object_or_404(queryset, **filter_kwargs)
+
+                # May raise a permission denied
+                self.check_object_permissions(self.request, obj)
+
+                return obj
         except Http404 as pk404:
             if lookup_url_kwarg not in self.kwargs:  # I'm no longer sure what purpose this really serves...
                 raise pk404
 
-        error_404 = Http404("No %s matches the given query." % queryset.model._meta.object_name)
+        error_404 = Http404("No %s matches the given query." % queryset.model.__name__)
 
         if lookup_type in ("pk", "id") or lookup_type is None:
             raise error_404
@@ -185,7 +210,17 @@ class TournamentPlayerViewSet(viewsets.ModelViewSet):
     def update(self, request, **kwargs):
         return self.partial_update(request, **kwargs)
 
+    def set_staff_status(self, request, new_staff_status):
+        if type(new_staff_status) is not bool:
+            raise ValidationError(f"type of `is_staff` is {type(new_staff_status)}, expected bool")
+        tournament_player = self.get_object(include_staff=True)
+        tournament_player.user.is_staff = new_staff_status
+        tournament_player.user.save()
+        return Response({"msg": f"{tournament_player} is staff: {new_staff_status}"})
+
     def partial_update(self, request, pk=None, **kwargs):
+        if (new_staff_status := request.data.get('is_staff', None)) is not None:
+            return self.set_staff_status(request, new_staff_status)
         tournament_player = self.get_object()
 
         new_is_organizer = request.data.get("is_organizer")

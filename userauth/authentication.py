@@ -8,6 +8,7 @@ from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import BasePermission
 
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer, TournamentPlayerBadge
@@ -201,3 +202,12 @@ class DiscordAndOsuAuthBackend(BaseBackend):
             return User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return None
+
+
+class IsSuperUser(BasePermission):
+    """
+    Allows access only to superusers.
+    """
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_superuser)
