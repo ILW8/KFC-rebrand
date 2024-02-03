@@ -1,4 +1,5 @@
 import datetime
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -41,6 +42,7 @@ class TestRegistrationCutoffTestCase(TestCase):
         request = factory.patch(f'/registrants/update_users')
         members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
         settings.TEAM_ROSTER_REGISTRATION_START = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
+        settings.TEAM_ROSTER_REGISTRATION_END = datetime.datetime.now(tz=datetime.timezone.utc) + timedelta(days=1)
 
         res = members_view(request, pk=self.tourney_team.pk)
 

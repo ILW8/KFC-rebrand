@@ -141,8 +141,36 @@ class FetchOsuUserStatsTestCase(TestCase):
 
     @patch("discord.tasks.get_osu_token")
     def test_stats_update_no_badge(self, mocked_get_osu_token):
+        mocked_get_osu_token.return_value = "TEST_VALID_TOKEN"
+
+        global_rank = 1000
+        response = MockResponse({
+            "badges": [{'awarded_at': '2023-01-19T02:08:46+00:00',
+                        'description': "Mapper's Choice Awards 2021: Top 3 in the user/beatmap "
+                                       "category Hitsounding",
+                        'image@2x_url': 'https://assets.ppy.sh/profile-badges/mca-2022/'
+                                        'mca-standard-2021@2x.png?2023-01-20',
+                        'image_url': 'https://assets.ppy.sh/profile-badges/mca-2022/'
+                                     'mca-standard-2021.png?2023-01-20',
+                        'url': 'https://mca.corsace.io/2021/results'}],
+            "statistics": {"global_rank": global_rank},
+            "username": self.tourney_user.osu_username
+        },
+            200)
+
+        year_2000 = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
+        self.assertLess(self.tourney_user.osu_stats_updated, year_2000)
+        with patch('discord.tasks.requests.get', new=Mock(return_value=response)) as p:
+            tasks.update_user(self.tourney_user.osu_user_id)
+            self.assertGreater(p.call_count, 0)
+            self.tourney_user.refresh_from_db()
+            self.assertGreater(self.tourney_user.osu_stats_updated, year_2000)
+            self.assertEqual(global_rank, self.tourney_user.osu_rank_std)
+
+    @patch("discord.tasks.get_osu_token")
+    def test_stats_update_update_useranme(self, mocked_get_osu_token):
         """
-        Test that we don't hit the osu! API if we fail to fetch a token
+        Test that a registrant's username gets updated along their stats during stats update
         :return:
         """
         mocked_get_osu_token.return_value = "TEST_VALID_TOKEN"
@@ -157,18 +185,17 @@ class FetchOsuUserStatsTestCase(TestCase):
                         'image_url': 'https://assets.ppy.sh/profile-badges/mca-2022/'
                                      'mca-standard-2021.png?2023-01-20',
                         'url': 'https://mca.corsace.io/2021/results'}],
-            "statistics": {"global_rank": global_rank}
+            "statistics": {"global_rank": global_rank},
+            "username": (new_username := "totally_new_username")
         },
             200)
 
-        year_2000 = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
-        self.assertLess(self.tourney_user.osu_stats_updated, year_2000)
         with patch('discord.tasks.requests.get', new=Mock(return_value=response)) as p:
             tasks.update_user(self.tourney_user.osu_user_id)
+
             self.assertGreater(p.call_count, 0)
             self.tourney_user.refresh_from_db()
-            self.assertGreater(self.tourney_user.osu_stats_updated, year_2000)
-            self.assertEqual(global_rank, self.tourney_user.osu_rank_std)
+            self.assertEqual(new_username, self.tourney_user.osu_username)
 
     @patch("discord.tasks.get_osu_token")
     def test_stats_update_queue_decr(self, mocked_get_osu_token):
@@ -179,7 +206,8 @@ class FetchOsuUserStatsTestCase(TestCase):
         mocked_get_osu_token.return_value = "TEST_VALID_TOKEN"
         response = MockResponse({
             "badges": [],
-            "statistics": {"global_rank": 1000}
+            "statistics": {"global_rank": 1000},
+            "username": self.tourney_user.osu_username
         },
             200)
 

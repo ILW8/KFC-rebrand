@@ -57,6 +57,7 @@ def update_user(user_id: int):
     tourney_player.osu_rank_std = osu_data['statistics'].get('global_rank', None)
     tourney_player.osu_rank_std_bws = bws(len(filter_badges(all_badges)),
                                           tourney_player.osu_rank_std)
+    tourney_player.osu_username = osu_data['username']
     tourney_player.osu_stats_updated = datetime.datetime.now(tz=datetime.timezone.utc)
 
     with transaction.atomic():
