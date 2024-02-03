@@ -7,10 +7,10 @@ from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from discord.views import TournamentPlayerSerializer, PreSharedKeyAuthentication, TeamOrganizer, ReadOnly
+from userauth.authentication import IsSuperUser
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer
 
@@ -83,7 +83,7 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
 
     @action(methods=['get', 'PATCH'],
             detail=True,
-            permission_classes=[PreSharedKeyAuthentication | TeamOrganizer | IsAdminUser])
+            permission_classes=[PreSharedKeyAuthentication | TeamOrganizer | IsSuperUser])
     def members(self, request, **kwargs):
         """
         only organizer of team and admins can see team registrants and roster
