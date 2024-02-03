@@ -7,6 +7,7 @@ from django.test import TestCase
 
 from teammgmt.models import TournamentTeam
 from teammgmt.views import TournamentTeamViewSet
+from userauth.authentication import IsSuperUser
 from userauth.models import TournamentPlayer
 from rest_framework.test import APIRequestFactory
 
@@ -77,3 +78,20 @@ class TestRegistrationCutoffTestCase(TestCase):
         res = members_view(request, pk=self.tourney_team.pk)
         self.assertContains(res, "required field", status_code=400)
         self.assertContains(res, "missing", status_code=400)
+
+    # def test_roster_after_regs_end(self):
+    def test_staff_cannot_manage_tournament_teams(self):
+        request = APIRequestFactory().get(f'/teams/{self.tourney_team.osu_flag}/members')
+        request.user = User.objects.create(is_staff=True)
+        members_view = TournamentTeamViewSet.as_view({'get': 'members'}, permission_classes=[])
+        has_permission = IsSuperUser().has_permission(request, members_view)
+
+        self.assertFalse(has_permission)
+
+    def test_superuser_can_manage_tournament_teams(self):
+        request = APIRequestFactory().get(f'/teams/{self.tourney_team.osu_flag}/members')
+        request.user = User.objects.create(is_superuser=True)
+        members_view = TournamentTeamViewSet.as_view({'get': 'members'}, permission_classes=[])
+        has_permission = IsSuperUser().has_permission(request, members_view)
+
+        self.assertTrue(has_permission)
