@@ -15,6 +15,7 @@ class Migration(migrations.Migration):
             name='is_captain',
             field=models.BooleanField(default=False),
         ),
+        migrations.RunSQL('ALTER TABLE userauth_tournamentplayer ALTER COLUMN is_captain SET DEFAULT 0;'),
         migrations.AddConstraint(
             model_name='tournamentplayer',
             constraint=models.CheckConstraint(check=models.Q(('in_roster', False), ('is_captain', True), _negated=True), name='captain_only_if_also_in_roster'),
