@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.test import TestCase
 
 from teammgmt.models import TournamentTeam
@@ -95,3 +96,19 @@ class TestRegistrationCutoffTestCase(TestCase):
         has_permission = IsSuperUser().has_permission(request, members_view)
 
         self.assertTrue(has_permission)
+
+
+class TestTournamentUserConstraints(TestCase):
+    def test_must_be_in_roster_for_captain(self):
+        with self.assertRaises(IntegrityError) as expect:
+            user = User.objects.create()
+            tourney_player = TournamentPlayer.objects.create(
+                user=user,
+                osu_user_id=1,
+                discord_user_id=1,
+                osu_stats_updated=datetime.datetime.now(tz=datetime.timezone.utc),
+                is_captain=True,
+                in_roster=False
+            )
+            tourney_player.save()
+        self.assertTrue("captain_only_if_also_in_roster" in str(expect.exception))

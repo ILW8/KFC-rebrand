@@ -22,6 +22,7 @@ class TournamentPlayer(models.Model):
     osu_stats_updated = models.DateTimeField()
 
     is_organizer = models.BooleanField(default=False)
+    is_captain = models.BooleanField(default=False)
     team = models.ForeignKey(teammgmt.models.TournamentTeam,
                              related_name='players',
                              on_delete=models.PROTECT,
@@ -40,8 +41,12 @@ class TournamentPlayer(models.Model):
             models.Index(fields=['osu_user_id']),
             models.Index(fields=['team'])
         ]
-        constraints = [CheckConstraint(name="not_both_roster_and_backup",
-                                       check=~Q(in_roster=True, in_backup_roster=True))]
+        constraints = [
+            CheckConstraint(name="not_both_roster_and_backup",
+                            check=~Q(in_roster=True, in_backup_roster=True)),
+            CheckConstraint(name="captain_only_if_also_in_roster",
+                            check=~Q(is_captain=True, in_roster=False))
+        ]
 
 
 class TournamentPlayerBadge(models.Model):
@@ -51,7 +56,7 @@ class TournamentPlayerBadge(models.Model):
     url = models.TextField(blank=True)
     image_url = models.TextField()
     image_url_2x = models.TextField()
-    
+
     class Meta:
         indexes = (
             models.Index(fields=('user',)),
