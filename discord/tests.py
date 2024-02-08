@@ -8,7 +8,7 @@ from parameterized import parameterized
 from rest_framework.test import APIRequestFactory
 
 from discord import tasks
-from discord.views import TournamentPlayerViewSet
+from discord.views import TeamOrganizer, TournamentPlayerViewSet
 from teammgmt.models import TournamentTeam
 from userauth.models import TournamentPlayer, TournamentPlayerBadge
 
@@ -20,6 +20,45 @@ class MockResponse:
 
     def json(self):
         return self.json_data
+
+
+class TestTournamentOrganizerPermissionClass(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(is_superuser=False)
+        self.team = TournamentTeam.objects.create(osu_flag="US")
+
+    def test_team_organizer_ignores_user_with_no_tourney_player(self):
+        request = APIRequestFactory().get(f'/doesnt_matter/')
+        request.user = self.user
+        has_permission = TeamOrganizer().has_object_permission(request, None, None)
+        self.assertFalse(has_permission)
+
+    def test_team_organizer_has_access_to_team(self):
+        tourney_player = TournamentPlayer.objects.create(
+            user=self.user,
+            osu_user_id=1,
+            osu_stats_updated=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc),
+            team=self.team,
+            is_organizer=True
+        )
+        request = APIRequestFactory().get(f'/doesnt_matter/')
+        request.user = self.user
+        has_permission = TeamOrganizer().has_object_permission(request, None, self.team)
+        self.assertTrue(has_permission)
+
+    def test_team_organizer_does_not_have_access_to_other_team(self):
+        other_team = TournamentTeam.objects.create(osu_flag="727")
+        TournamentPlayer.objects.create(
+            user=self.user,
+            osu_user_id=1,
+            osu_stats_updated=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc),
+            team=other_team,
+            is_organizer=True
+        )
+        request = APIRequestFactory().get(f'/doesnt_matter/')
+        request.user = self.user
+        has_permission = TeamOrganizer().has_object_permission(request, None, self.team)
+        self.assertFalse(has_permission)
 
 
 class FetchOsuUserStatsTestCase(TestCase):
@@ -389,8 +428,8 @@ class UpdateTournamentPlayerRolesTestCase(TestCase):
                                                             ))
 
     @parameterized.expand([
-        ("true", True, ),
-        ("false", False, )
+        ("true", True,),
+        ("false", False,)
     ])
     def test_set_tourney_player_staff(self, _, new_staff_status):
         factory = APIRequestFactory()
@@ -398,7 +437,7 @@ class UpdateTournamentPlayerRolesTestCase(TestCase):
                                 {'is_staff': new_staff_status},
                                 format='json')
         set_tourney_user_staff = TournamentPlayerViewSet.as_view({'patch': 'partial_update'},
-                                                                  permission_classes=[])
+                                                                 permission_classes=[])
 
         res = set_tourney_user_staff(request, pk=self.tourney_user.discord_user_id)
 

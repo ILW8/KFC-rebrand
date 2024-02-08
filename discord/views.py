@@ -39,7 +39,11 @@ class TeamOrganizer(BasePermission):
     def has_object_permission(self, request, view, obj):
         if isinstance(request.user, AnonymousUser):
             return False
-        if not request.user.tournamentplayer.is_organizer or request.user.tournamentplayer.team != obj:
+        try:
+            tourney_player = request.user.tournamentplayer
+        except TournamentPlayer.DoesNotExist:
+            return False
+        if not tourney_player.is_organizer or tourney_player.team != obj:
             return False
 
         return True
@@ -67,6 +71,7 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
                   'rank_standard',
                   'rank_standard_bws',
                   'is_organizer',
+                  'is_captain',
                   'in_roster',
                   'in_backup_roster',
                   'team_id',

@@ -25,10 +25,11 @@ class TournamentTeamMembersSerializer(serializers.HyperlinkedModelSerializer):
     candidates = serializers.SerializerMethodField()
     roster = serializers.SerializerMethodField()
     backups = serializers.SerializerMethodField()
+    captain = serializers.SerializerMethodField()
 
     class Meta:
         model = TournamentTeam
-        fields = ['url', 'osu_flag', 'roster', 'backups', 'candidates']
+        fields = ['url', 'osu_flag', 'captain', 'roster', 'backups', 'candidates']
 
     def get_candidates(self, team: TournamentTeam):
         qs = TournamentPlayer.objects.filter(team=team)
@@ -74,6 +75,12 @@ class TournamentTeamMembersSerializer(serializers.HyperlinkedModelSerializer):
         serializer = TournamentPlayerSerializer(instance=players, context=self.context, many=True)
         return serializer.data
 
+    def get_captain(self, team):
+        if (captain := TournamentPlayer.objects.filter(team=team, is_captain=True)).exists():
+            serializer = TournamentPlayerSerializer(instance=captain[0], context=self.context, many=False)
+            return serializer.data
+        return None
+
 
 class TournamentTeamViewSet(viewsets.ModelViewSet):
     serializer_class = TournamentTeamSerializer
@@ -111,6 +118,14 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_400_BAD_REQUEST)
             players = request.data['players']
             backups = request.data['backups']
+            captain = request.data.get('captain', None)
+
+            if captain is not None:
+                try:
+                    captain = int(captain)
+                except ValueError:
+                    return Response({"error": "provided captain value is not a player ID"},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
             # check roster size
             # TODO: only allow reserve players if main roster meets minimum roster size
@@ -155,6 +170,11 @@ class TournamentTeamViewSet(viewsets.ModelViewSet):
                         player_to_remove_from_backup.save()
                     req_players_qs.update(in_roster=True)
                     req_backups_qs.update(in_backup_roster=True)
+                    team.players.update(is_captain=False)
+
+                    # if captain not in new roster, silently drop captain
+                    if captain is not None and req_players_qs.filter(pk=captain).exists():
+                        req_players_qs.filter(pk=captain).update(is_captain=True)
             except IntegrityError as e:
                 if str(e) == 'CHECK constraint failed: not_both_roster_and_backup':
                     return Response({"error": "player cannot be both in roster and "
