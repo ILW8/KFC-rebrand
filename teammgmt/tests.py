@@ -5,7 +5,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.test import TestCase
+from rest_framework.authentication import TokenAuthentication
 
+from discord.views import TournamentPlayerSerializer, TournamentPlayerViewSet
 from teammgmt.models import TournamentTeam
 from teammgmt.views import TournamentTeamViewSet
 from userauth.authentication import IsSuperUser
@@ -16,10 +18,10 @@ from rest_framework.test import APIRequestFactory
 class TestCaseWithTourneyUsers(TestCase):
     def setUp(self):
         self.tourney_team = TournamentTeam.objects.create(osu_flag="SH")
-        self.tourney_users = []
+        self.tourney_players = []
         for i in range(11):
             user = User.objects.create(pk=i, username=f"user_{i}")
-            self.tourney_users.append(
+            self.tourney_players.append(
                 TournamentPlayer.objects.create(user=user,
                                                 team=self.tourney_team,
                                                 osu_user_id=i,
@@ -103,7 +105,7 @@ class TestTournamentUserConstraints(TestCase):
     def test_must_be_in_roster_for_captain(self):
         with self.assertRaises(IntegrityError) as expect:
             user = User.objects.create()
-            tourney_player = TournamentPlayer.objects.create(
+            TournamentPlayer.objects.create(
                 user=user,
                 osu_user_id=1,
                 discord_user_id=1,
@@ -125,7 +127,7 @@ class TestSetTeamCaptain(TestCaseWithTourneyUsers):
 
     def test_set_captain_not_in_roster_noop(self):
         request = self.factory.patch(f'/teams/{self.tourney_team.osu_flag}/members',
-                                     data={"players": [], "backups": [], "captain": self.tourney_users[0].pk},
+                                     data={"players": [], "backups": [], "captain": self.tourney_players[0].pk},
                                      format="json")
         members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
         res = members_view(request, pk=self.tourney_team.pk)
@@ -136,8 +138,8 @@ class TestSetTeamCaptain(TestCaseWithTourneyUsers):
     def test_set_captain_in_backups_noop(self):
         request = self.factory.patch(f'/teams/{self.tourney_team.osu_flag}/members',
                                      data={"players": [],
-                                           "backups": [self.tourney_users[0].pk],
-                                           "captain": self.tourney_users[0].pk},
+                                           "backups": [self.tourney_players[0].pk],
+                                           "captain": self.tourney_players[0].pk},
                                      format="json")
         members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
         res = members_view(request, pk=self.tourney_team.pk)
@@ -147,23 +149,23 @@ class TestSetTeamCaptain(TestCaseWithTourneyUsers):
 
     def test_set_captain_successful(self):
         request = self.factory.patch(f'/teams/{self.tourney_team.osu_flag}/members',
-                                     data={"players": [self.tourney_users[0].pk],
+                                     data={"players": [self.tourney_players[0].pk],
                                            "backups": [],
-                                           "captain": self.tourney_users[0].pk},
+                                           "captain": self.tourney_players[0].pk},
                                      format="json")
         members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
         res = members_view(request, pk=self.tourney_team.pk)
 
         self.assertIsNotNone(res.data['captain'])
-        self.assertEqual(self.tourney_users[0].pk, res.data['captain']['user_id'])
+        self.assertEqual(self.tourney_players[0].pk, res.data['captain']['user_id'])
         self.assertEqual(200, res.status_code)
 
     def test_unset_captain(self):
-        self.tourney_users[0].is_captain = True
-        self.tourney_users[0].in_roster = True
-        self.tourney_users[0].save()
+        self.tourney_players[0].is_captain = True
+        self.tourney_players[0].in_roster = True
+        self.tourney_players[0].save()
         request = self.factory.patch(f'/teams/{self.tourney_team.osu_flag}/members',
-                                     data={"players": [self.tourney_users[0].pk],
+                                     data={"players": [self.tourney_players[0].pk],
                                            "backups": [],
                                            "captain": None},
                                      format="json")
@@ -174,11 +176,11 @@ class TestSetTeamCaptain(TestCaseWithTourneyUsers):
         self.assertEqual(200, res.status_code)
 
     def test_unset_captain_key_not_present(self):
-        self.tourney_users[0].is_captain = True
-        self.tourney_users[0].in_roster = True
-        self.tourney_users[0].save()
+        self.tourney_players[0].is_captain = True
+        self.tourney_players[0].in_roster = True
+        self.tourney_players[0].save()
         request = self.factory.patch(f'/teams/{self.tourney_team.osu_flag}/members',
-                                     data={"players": [self.tourney_users[0].pk],
+                                     data={"players": [self.tourney_players[0].pk],
                                            "backups": []},
                                      format="json")
         members_view = TournamentTeamViewSet.as_view({'patch': 'members'}, permission_classes=[])
@@ -205,3 +207,66 @@ class TestSetTeamCaptain(TestCaseWithTourneyUsers):
         res = members_view(request, pk=self.tourney_team.pk)
 
         self.assertContains(res, "provided captain value is not a player ID", status_code=400)
+
+
+class TestViewRosterMembership(TestCaseWithTourneyUsers):
+    """
+    Hide fields `is_captain`, `in_roster`, and `in_backup_roster` when serializing TournamentPlayer if request is
+    unauthenticated or authenticated user lacks permission.
+
+    - Superusers can see the hidden fields
+    - A request authenticated with the pre-shared key can see the hidden fields
+    - A team organizer can see the hidden fields for registrants for their own team.
+    """
+    restricted_fields = ('is_captain', 'in_roster', 'in_backup_roster', )
+
+    def test_unauthenticated_roster_fields_hidden(self):
+        request = APIRequestFactory().get(f'/does_not_matter/')
+        request.user = self.tourney_players[0].user
+        serializer = TournamentPlayerSerializer(self.tourney_players[0], context={'request': request})
+
+        for field in self.restricted_fields:
+            self.assertNotIn(field, serializer.data.keys())
+
+    def test_team_organizer_can_see_own_team_members(self):
+        self.tourney_players[0].is_organizer = True
+        self.tourney_players[0].save()
+
+        request = APIRequestFactory().get(f'/does_not_matter/')
+        request.user = self.tourney_players[0].user
+        serializer = TournamentPlayerSerializer(self.tourney_players[0], context={'request': request})
+
+        for field in self.restricted_fields:
+            self.assertIn(field, serializer.data.keys())
+
+    def test_team_organizer_cannot_see_other_teams(self):
+        other_team = TournamentTeam.objects.create(osu_flag="727")
+        self.tourney_players[0].is_organizer = True
+        self.tourney_players[0].save()
+
+        self.tourney_players[1].team = other_team
+        self.tourney_players[1].save()
+
+        request = APIRequestFactory().get(f'/does_not_matter/')
+        request.user = self.tourney_players[0].user
+        serializer = TournamentPlayerSerializer(self.tourney_players[1], context={'request': request})
+
+        for field in self.restricted_fields:
+            self.assertNotIn(field, serializer.data.keys())
+
+    def test_superuser_sees_all_fields(self):
+        request = APIRequestFactory().get(f'/does_not_matter/')
+        request.user = User.objects.create(is_superuser=True)
+        serializer = TournamentPlayerSerializer(self.tourney_players[0], context={'request': request})
+
+        for field in self.restricted_fields:
+            self.assertIn(field, serializer.data.keys())
+
+    def test_PSK_request_sees_all_fields(self):
+        request = APIRequestFactory().get(f'/does_not_matter/',
+                                          HTTP_AUTHORIZATION=f"{TokenAuthentication.keyword} {settings.DISCORD_PSK}")
+        request.user = User.objects.create()
+        serializer = TournamentPlayerSerializer(self.tourney_players[0], context={'request': request})
+
+        for field in self.restricted_fields:
+            self.assertIn(field, serializer.data.keys())

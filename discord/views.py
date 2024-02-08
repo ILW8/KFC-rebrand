@@ -56,7 +56,19 @@ class TournamentPlayerSerializer(serializers.HyperlinkedModelSerializer):
     rank_standard = serializers.ReadOnlyField(source='osu_rank_std')
     rank_standard_bws = serializers.ReadOnlyField(source='osu_rank_std_bws')
 
-    # user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all())
+    def to_representation(self, instance):
+        representation = super(TournamentPlayerSerializer, self).to_representation(instance=instance)
+
+        request = self._context['request']
+        # kinda don't like that I have to put these conditions here, but it is what it is
+        has_admin_perms = (IsSuperUser | PreSharedKeyAuthentication)().has_permission(request, None)
+        has_team_perms = TeamOrganizer().has_object_permission(request, None, instance.team)
+        if not has_admin_perms and not has_team_perms:
+            del representation['is_captain']
+            del representation['in_roster']
+            del representation['in_backup_roster']
+
+        return representation
 
     class Meta:
         model = TournamentPlayer
