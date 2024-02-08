@@ -111,7 +111,6 @@ class TestTournamentUserConstraints(TestCase):
                 is_captain=True,
                 in_roster=False
             )
-            tourney_player.save()
         self.assertTrue("captain_only_if_also_in_roster" in str(expect.exception))
 
 
