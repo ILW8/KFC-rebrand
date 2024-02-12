@@ -17,13 +17,13 @@ COPY . /app
 
 RUN python3 manage.py collectstatic --no-input
 
-# gunicorn -k uvicorn.workers.UvicornWorker fivedigitworldcup.asgi:application -b 0.0.0.0:9727
+# gunicorn -k uvicorn.workers.UvicornWorker kfcrebrand.asgi:application -b 0.0.0.0:9727
 # ~2-4 workers per core on a server
-CMD ["gunicorn", "--workers", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:80", "fivedigitworldcup.asgi:application"]
+CMD ["gunicorn", "--workers", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:80", "kfcrebrand.asgi:application"]
 
 
 FROM backend AS celery_worker
-CMD ["celery", "-A", "fivedigitworldcup", "worker", "-l", "INFO"]
+CMD ["celery", "-A", "kfcrebrand", "worker", "-l", "INFO"]
 
 
 FROM ubuntu:22.04 AS statics_server

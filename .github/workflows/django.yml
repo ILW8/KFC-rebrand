@@ -44,11 +44,11 @@ jobs:
 
     - name: Run migrations
       run: |
-        python ./manage.py migrate --settings=fivedigitworldcup.settings_test
+        python ./manage.py migrate --settings=kfcrebrand.settings_test
 
     - name: Run tests
       run: |
-        coverage run --source='.' --omit='*migrations*' manage.py test --settings=fivedigitworldcup.settings_test
+        coverage run --source='.' --omit='*migrations*' manage.py test --settings=kfcrebrand.settings_test
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

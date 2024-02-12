@@ -1,5 +1,5 @@
 """
-ASGI config for fivedigitworldcup project.
+ASGI config for kfcrebrand project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -16,7 +16,7 @@ from django.core.asgi import get_asgi_application
 
 from discord.routing import websocket_urlpatterns
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fivedigitworldcup.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'kfcrebrand.settings')
 
 django_asgi_app = get_asgi_application()
 
